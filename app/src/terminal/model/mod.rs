@@ -1,0 +1,47 @@
+pub use grid::GridStorage;
+pub use terminal_model::TerminalModel;
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! assert_lines_approx_eq {
+    ($actual:expr_2021, $expected:expr_2021) => {{
+        float_cmp::assert_approx_eq!(
+            warpui::units::Lines,
+            $actual,
+            warpui::units::IntoLines::into_lines($expected)
+        )
+    }};
+}
+
+pub mod alt_screen;
+pub mod ansi;
+pub mod block;
+pub mod blockgrid;
+pub mod blocks;
+pub mod bootstrap;
+pub mod completions;
+pub mod header_grid;
+pub mod rich_content;
+
+pub mod early_output;
+pub mod find;
+pub mod grid;
+pub mod image_map;
+pub mod index;
+pub mod iterm_image;
+pub mod kitty;
+pub(in crate::terminal) mod lifecycle;
+pub mod secrets;
+pub mod selection;
+pub mod session;
+pub mod terminal_model;
+#[cfg(any(test, feature = "test-util"))]
+pub mod test_utils;
+
+pub use lifecycle::{LifecycleRecoveryRecord, StartCommandOutcome};
+pub use secrets::{
+    ObfuscateSecrets, RespectObfuscatedSecrets, Secret, SecretHandle,
+    set_user_and_enterprise_secret_regexes,
+};
+pub use warp_terminal::model::grid::cell;
+pub use warp_terminal::model::{BlockId, char_or_str, escape_sequences, mouse};
