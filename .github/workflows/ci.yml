@@ -36,6 +36,9 @@ jobs:
           toolchain: 1.92.0
           components: rustfmt
 
+      - name: Install protobuf compiler
+        run: brew install protobuf
+
       - name: Check formatting
         run: cargo fmt --all --check
 
