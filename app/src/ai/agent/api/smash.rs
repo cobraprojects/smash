@@ -35,13 +35,12 @@ pub(super) async fn generate_output(
         .filter(|id| !id.is_empty())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
 
-    let input = input_text(&params.input);
     let mut messages = CONVERSATIONS
         .lock()
         .get(&conversation_id)
         .cloned()
         .unwrap_or_default();
-    append_input(&mut messages, &params.input, input);
+    append_input(&mut messages, &params.input);
 
     let model = normalize_model(params.model.as_str());
     let request = json!({
@@ -371,15 +370,19 @@ fn chat_completion_messages(messages: &[Value]) -> Vec<Value> {
         .collect()
 }
 
-fn append_input(messages: &mut Vec<Value>, inputs: &[AIAgentInput], text: String) {
-    if inputs.len() == 1
-        && let AIAgentInput::ActionResult { result, .. } = &inputs[0]
-    {
-        messages.push(json!({
-            "type": "function_call_output",
-            "call_id": result.id.to_string(),
-            "output": action_result_text(&result.result),
-        }));
+fn append_input(messages: &mut Vec<Value>, inputs: &[AIAgentInput]) {
+    for input in inputs {
+        if let AIAgentInput::ActionResult { result, .. } = input {
+            messages.push(json!({
+                "type": "function_call_output",
+                "call_id": result.id.to_string(),
+                "output": action_result_text(&result.result),
+            }));
+        }
+    }
+
+    let text = input_text(inputs);
+    if text.is_empty() {
         return;
     }
     messages.push(json!({
@@ -417,15 +420,17 @@ fn append_output(messages: &mut Vec<Value>, output: &[Value]) {
 fn input_text(inputs: &[AIAgentInput]) -> String {
     inputs
         .iter()
-        .map(|input| match input {
+        .filter_map(|input| match input {
             AIAgentInput::UserQuery { query, .. }
             | AIAgentInput::AutoCodeDiffQuery { query, .. }
-            | AIAgentInput::CreateNewProject { query, .. } => query.clone(),
-            AIAgentInput::ActionResult { result, .. } => action_result_text(&result.result),
-            AIAgentInput::SummarizeConversation { prompt, .. } => prompt
-                .clone()
-                .unwrap_or_else(|| "Summarize the conversation.".to_owned()),
-            other => format!("{other:?}"),
+            | AIAgentInput::CreateNewProject { query, .. } => Some(query.clone()),
+            AIAgentInput::ActionResult { .. } => None,
+            AIAgentInput::SummarizeConversation { prompt, .. } => Some(
+                prompt
+                    .clone()
+                    .unwrap_or_else(|| "Summarize the conversation.".to_owned()),
+            ),
+            other => Some(format!("{other:?}")),
         })
         .collect::<Vec<_>>()
         .join("\n\n")
@@ -636,10 +641,38 @@ fn stream_finished() -> api::ResponseEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::agent::AIAgentActionResult;
+    use crate::ai::agent::task::TaskId;
+
+    fn action_result(id: &str) -> AIAgentInput {
+        AIAgentInput::ActionResult {
+            result: AIAgentActionResult {
+                id: id.to_owned().into(),
+                task_id: TaskId::new("task-1".to_owned()),
+                result: AIAgentActionResultType::InitProject,
+            },
+            context: Arc::from([]),
+        }
+    }
 
     #[test]
     fn only_supported_chatgpt_models_are_forwarded() {
         assert_eq!(normalize_model("gpt-5.6-sol"), "gpt-5.6-sol");
         assert_eq!(normalize_model("oz-agent"), DEFAULT_MODEL);
+    }
+
+    #[test]
+    fn appends_every_parallel_tool_result_for_chatgpt() {
+        let mut messages = Vec::new();
+        append_input(
+            &mut messages,
+            &[action_result("call-1"), action_result("call-2")],
+        );
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0]["type"], "function_call_output");
+        assert_eq!(messages[0]["call_id"], "call-1");
+        assert_eq!(messages[1]["type"], "function_call_output");
+        assert_eq!(messages[1]["call_id"], "call-2");
     }
 }
