@@ -3933,11 +3933,12 @@ fn test_standard_tab_context_menu_shows_hover_only_tab_bar() {
 }
 
 #[test]
-fn test_open_cloud_agent_setup_guide_action_opens_management_view_and_is_idempotent() {
+fn test_agent_management_actions_are_ignored_in_oss() {
     let _agent_management_guard = FeatureFlag::AgentManagementView.override_enabled(true);
 
     App::test((), |mut app| async move {
         initialize_app(&mut app);
+        assert_eq!(ChannelState::channel(), Channel::Oss);
 
         let workspace = mock_workspace(&mut app);
 
@@ -3948,30 +3949,25 @@ fn test_open_cloud_agent_setup_guide_action_opens_management_view_and_is_idempot
                     .is_agent_management_view_open
             );
 
-            workspace.handle_action(&WorkspaceAction::OpenCloudAgentSetupGuide, ctx);
+            workspace.handle_action(&WorkspaceAction::ToggleAgentManagementView, ctx);
             assert!(
-                workspace
+                !workspace
                     .current_workspace_state
                     .is_agent_management_view_open
             );
+
+            workspace.handle_action(&WorkspaceAction::OpenAgentManagementView, ctx);
             assert!(
-                workspace
-                    .agent_management_view
-                    .as_ref(ctx)
-                    .is_showing_setup_guide()
+                !workspace
+                    .current_workspace_state
+                    .is_agent_management_view_open
             );
 
             workspace.handle_action(&WorkspaceAction::OpenCloudAgentSetupGuide, ctx);
             assert!(
-                workspace
+                !workspace
                     .current_workspace_state
                     .is_agent_management_view_open
-            );
-            assert!(
-                workspace
-                    .agent_management_view
-                    .as_ref(ctx)
-                    .is_showing_setup_guide()
             );
         });
     });

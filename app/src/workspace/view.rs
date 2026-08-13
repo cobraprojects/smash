@@ -21120,7 +21120,8 @@ impl Workspace {
             .finish();
         } else {
             // Copy from our saved tab_bar_state to ensure all tabs get rendered with the same state
-            let active_tab_index = if FeatureFlag::AgentManagementView.is_enabled()
+            let active_tab_index = if ChannelState::channel() != Channel::Oss
+                && FeatureFlag::AgentManagementView.is_enabled()
                 && self.current_workspace_state.is_agent_management_view_open
             {
                 None
@@ -22275,7 +22276,8 @@ impl Workspace {
     ) -> Box<dyn Element> {
         let active_tab_data = &self.tabs[self.active_tab_index];
 
-        let active_content = if FeatureFlag::AgentManagementView.is_enabled()
+        let active_content = if ChannelState::channel() != Channel::Oss
+            && FeatureFlag::AgentManagementView.is_enabled()
             && self.current_workspace_state.is_agent_management_view_open
         {
             ChildView::new(&self.agent_management_view).finish()
@@ -25117,7 +25119,8 @@ impl TypedActionView for Workspace {
                 ctx.notify();
             }
             ToggleAgentManagementView => {
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                if ChannelState::channel() != Channel::Oss
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
                     let is_open = !self.current_workspace_state.is_agent_management_view_open;
@@ -25138,7 +25141,8 @@ impl TypedActionView for Workspace {
                 }
             }
             OpenAgentManagementView => {
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                if ChannelState::channel() != Channel::Oss
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
                     self.set_is_agent_management_view_open(true, ctx);
@@ -25147,7 +25151,8 @@ impl TypedActionView for Workspace {
                 }
             }
             ViewAgentRunsForEnvironment { environment_id } => {
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                if ChannelState::channel() != Channel::Oss
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
                     self.set_is_agent_management_view_open(true, ctx);
@@ -25202,7 +25207,8 @@ impl TypedActionView for Workspace {
                 self.add_terminal_pane_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
             OpenCloudAgentSetupGuide => {
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                if ChannelState::channel() != Channel::Oss
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
                     self.set_is_agent_management_view_open(true, ctx);

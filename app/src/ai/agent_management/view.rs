@@ -898,11 +898,6 @@ impl AgentManagementView {
         ctx.notify();
     }
 
-    #[cfg(test)]
-    pub(crate) fn is_showing_setup_guide(&self) -> bool {
-        self.is_viewing_setup_guide
-    }
-
     pub(crate) fn apply_environment_filter_from_link(
         &mut self,
         environment_id: String,
