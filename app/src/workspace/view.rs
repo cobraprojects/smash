@@ -978,6 +978,7 @@ pub struct TransferredTab {
     pub custom_title: Option<String>,
     pub left_panel_open: bool,
     pub vertical_tabs_panel_open: bool,
+    pub vertical_tabs_panel_width: f32,
     pub right_panel_open: bool,
     pub is_right_panel_maximized: bool,
     pub draggable_state: DraggableState,
@@ -2860,6 +2861,16 @@ impl Workspace {
             } => ModalSizes::from_restored(&window_snapshot, left_panel_size, right_panel_size),
             _ => ModalSizes::default_with_panel_defaults(left_panel_size, right_panel_size),
         };
+        let vertical_tabs_panel_width = match &workspace_setting {
+            NewWorkspaceSource::Restored {
+                window_snapshot, ..
+            } => window_snapshot.vertical_tabs_panel_width,
+            NewWorkspaceSource::TransferredTab {
+                vertical_tabs_panel_width,
+                ..
+            } => Some(*vertical_tabs_panel_width),
+            _ => None,
+        };
         resizable_data.update(ctx, |model, _| {
             model.insert(window_id, new_resizable_modal_sizes)
         });
@@ -3468,9 +3479,11 @@ impl Workspace {
             shared_objects_creation_denied_modal,
             file_upload_sessions: Default::default(),
             ai_fact_view,
-            left_panel_open: ChannelState::channel() == Channel::Oss,
+            left_panel_open: false,
             vertical_tabs_panel_open: false,
-            vertical_tabs_panel: Default::default(),
+            vertical_tabs_panel: VerticalTabsPanelState::with_restored_width(
+                vertical_tabs_panel_width,
+            ),
             left_panel_view,
             left_panel_views,
             right_panel_view,
@@ -11971,6 +11984,7 @@ impl Workspace {
             warp_drive_index_width,
             left_panel_open: self.left_panel_open,
             vertical_tabs_panel_open: self.vertical_tabs_panel_open,
+            vertical_tabs_panel_width: Some(self.vertical_tabs_panel.width()),
             left_panel_width,
             right_panel_width,
             agent_management_filters,
@@ -17224,6 +17238,7 @@ impl Workspace {
                         left_panel.handle_action_with_force_open(&action, *force_open, ctx);
                     });
                 }
+                ctx.dispatch_global_action("workspace:save_app", ());
             }
             #[cfg(feature = "local_fs")]
             pane_group::Event::OpenFileWithTarget {
@@ -28151,6 +28166,7 @@ impl Workspace {
         let right_panel_open = pane_group.read(ctx, |pg, _| pg.right_panel_open);
         let is_right_panel_maximized = pane_group.read(ctx, |pg, _| pg.is_right_panel_maximized);
         let vertical_tabs_panel_open = self.vertical_tabs_panel_open;
+        let vertical_tabs_panel_width = self.vertical_tabs_panel.width();
 
         Some(TransferredTab {
             pane_group,
@@ -28161,6 +28177,7 @@ impl Workspace {
             is_right_panel_maximized,
             draggable_state,
             vertical_tabs_panel_open,
+            vertical_tabs_panel_width,
         })
     }
 

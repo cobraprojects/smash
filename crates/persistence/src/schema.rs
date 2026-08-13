@@ -454,6 +454,9 @@ diesel::table! {
         agent_management_filters -> Nullable<Text>,
         left_panel_open -> Nullable<Bool>,
         vertical_tabs_panel_open -> Nullable<Bool>,
+        vertical_tabs_panel_width -> Nullable<Float>,
+        left_panel_width -> Nullable<Float>,
+        right_panel_width -> Nullable<Float>,
         team_uid -> Nullable<Text>,
     }
 }

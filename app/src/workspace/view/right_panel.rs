@@ -1906,6 +1906,9 @@ impl View for RightPanelView {
             .on_resize(move |ctx, _| {
                 ctx.notify();
             })
+            .on_end_resizing(|ctx, _| {
+                ctx.dispatch_action("workspace:save_app", ());
+            })
             .with_bounds_callback(Box::new(|window_size| {
                 let min_width = MIN_SIDEBAR_WIDTH;
                 let max_width = window_size.x() * MAX_SIDEBAR_WIDTH_RATIO;

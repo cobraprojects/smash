@@ -996,6 +996,9 @@ fn save_app_state(conn: &mut SqliteConnection, app_state: &AppState) -> Result<(
                 warp_drive_index_width: window.warp_drive_index_width,
                 left_panel_open: Some(window.left_panel_open),
                 vertical_tabs_panel_open: Some(window.vertical_tabs_panel_open),
+                vertical_tabs_panel_width: window.vertical_tabs_panel_width,
+                left_panel_width: window.left_panel_width,
+                right_panel_width: window.right_panel_width,
                 fullscreen_state: window.fullscreen_state as i32,
                 agent_management_filters: window
                     .agent_management_filters
@@ -2674,21 +2677,25 @@ fn read_sqlite_data(
                         _ => None,
                     };
 
-                    let left_panel_width: Option<f32> =
-                        saved_tabs
-                            .get(tab_index)
-                            .and_then(|tab| match tab.left_panel.as_ref() {
-                                Some(LeftPanelSnapshot { width, .. }) => Some(*width as f32),
-                                _ => None,
-                            });
+                    let restored_left_panel_width: Option<f32> =
+                        window.left_panel_width.or_else(|| {
+                            saved_tabs.get(tab_index).and_then(|tab| {
+                                match tab.left_panel.as_ref() {
+                                    Some(LeftPanelSnapshot { width, .. }) => Some(*width as f32),
+                                    _ => None,
+                                }
+                            })
+                        });
 
-                    let right_panel_width: Option<f32> =
-                        saved_tabs
-                            .get(tab_index)
-                            .and_then(|tab| match tab.right_panel.as_ref() {
-                                Some(RightPanelSnapshot { width, .. }) => Some(*width as f32),
-                                _ => None,
-                            });
+                    let restored_right_panel_width: Option<f32> =
+                        window.right_panel_width.or_else(|| {
+                            saved_tabs.get(tab_index).and_then(|tab| {
+                                match tab.right_panel.as_ref() {
+                                    Some(RightPanelSnapshot { width, .. }) => Some(*width as f32),
+                                    _ => None,
+                                }
+                            })
+                        });
 
                     let window_left_panel_open = window.left_panel_open.unwrap_or_else(|| {
                         saved_tabs
@@ -2711,9 +2718,10 @@ fn read_sqlite_data(
                         warp_drive_index_width: window.warp_drive_index_width,
                         left_panel_open: window_left_panel_open,
                         vertical_tabs_panel_open: window.vertical_tabs_panel_open.unwrap_or(false),
+                        vertical_tabs_panel_width: window.vertical_tabs_panel_width,
                         fullscreen_state: fullscreen_state_val,
-                        left_panel_width,
-                        right_panel_width,
+                        left_panel_width: restored_left_panel_width,
+                        right_panel_width: restored_right_panel_width,
                         agent_management_filters: window
                             .agent_management_filters
                             .and_then(|s| serde_json::from_str(&s).ok()),

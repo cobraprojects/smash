@@ -1016,9 +1016,19 @@ impl WorkspaceAction {
             | OpenRepository { .. }
             | SelectTabConfig(_)
             | ToggleVerticalTabsPanel
-            | OpenVerticalTabsPanel => true, // actions that actually change a state of the state of user's
-            // workspace would most likely require a save, so that if the app gets
-            // restarted, the user can continue working
+            | OpenVerticalTabsPanel
+            | ToggleLeftPanel
+            | ToggleWarpDrive
+            | OpenWarpDrive
+            | ClosePanel
+            | ToggleRightPanel
+            | OpenCodeReviewPanel(..)
+            | ToggleProjectExplorer
+            | OpenProjectExplorer
+            | ToggleGlobalSearch
+            | OpenGlobalSearch
+            | ToggleConversationListView
+            | OpenConversationListView => true,
             AutoupdateFailureLink
             | ApplyUpdate
             | CopyVersion(_)
@@ -1091,12 +1101,6 @@ impl WorkspaceAction {
             | StartTabDrag
             | DragGroup { .. }
             | StartGroupDrag(_)
-            | ToggleLeftPanel
-            | ToggleWarpDrive
-            | OpenWarpDrive
-            | ClosePanel
-            | ToggleRightPanel
-            | OpenCodeReviewPanel(..)
             | ToggleVerticalTabsSettingsPopup
             | SetVerticalTabsDisplayGranularity(_)
             | SetVerticalTabsTabItemMode(_)
@@ -1177,13 +1181,7 @@ impl WorkspaceAction {
             | JumpToLatestToast
             | NavigatePrevPaneOrPanel
             | NavigateNextPaneOrPanel
-            | ToggleProjectExplorer
-            | OpenProjectExplorer
-            | ToggleGlobalSearch
             | ToggleHiddenFiles
-            | OpenGlobalSearch
-            | ToggleConversationListView
-            | OpenConversationListView
             | ToggleNotificationMailbox { .. }
             | ToggleAgentManagementView
             | OpenAgentManagementView

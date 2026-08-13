@@ -2675,6 +2675,11 @@ pub(crate) fn app_callbacks(
                 manager.close_notebooks(ctx);
             });
 
+            // Capture the final window, tab, session, and panel layout before shutting down the
+            // persistence writer. UI actions normally save immediately, while this is the final
+            // backstop for changes made immediately before quitting.
+            ctx.dispatch_global_action("workspace:save_app", &());
+
             PersistenceWriter::handle(ctx).update(ctx, |writer, _ctx| {
                 writer.terminate();
             });

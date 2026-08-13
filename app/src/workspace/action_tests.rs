@@ -22,6 +22,17 @@ fn vertical_tabs_panel_toggle_still_saves_workspace_state() {
 }
 
 #[test]
+fn workspace_panel_changes_save_workspace_state() {
+    assert!(WorkspaceAction::ToggleLeftPanel.should_save_app_state_on_action());
+    assert!(WorkspaceAction::ToggleProjectExplorer.should_save_app_state_on_action());
+    assert!(WorkspaceAction::OpenProjectExplorer.should_save_app_state_on_action());
+    assert!(WorkspaceAction::ToggleGlobalSearch.should_save_app_state_on_action());
+    assert!(WorkspaceAction::OpenGlobalSearch.should_save_app_state_on_action());
+    assert!(WorkspaceAction::ToggleRightPanel.should_save_app_state_on_action());
+    assert!(WorkspaceAction::ClosePanel.should_save_app_state_on_action());
+}
+
+#[test]
 fn settings_popup_toggle_does_not_save_workspace_state() {
     assert!(!WorkspaceAction::ToggleVerticalTabsSettingsPopup.should_save_app_state_on_action());
 }

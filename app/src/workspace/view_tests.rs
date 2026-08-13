@@ -356,6 +356,7 @@ fn transferred_tab_workspace(
                 custom_title: None,
                 left_panel_open: false,
                 vertical_tabs_panel_open,
+                vertical_tabs_panel_width: if vertical_tabs_panel_open { 428. } else { 312. },
                 right_panel_open: false,
                 is_right_panel_maximized: false,
                 is_tab_drag_preview: false,
@@ -3159,23 +3160,27 @@ fn test_vertical_tabs_panel_visibility_restores_from_window_snapshot() {
 
         let workspace = mock_workspace(&mut app);
 
-        let closed_snapshot = workspace.update(&mut app, |workspace, ctx| {
+        let mut closed_snapshot = workspace.update(&mut app, |workspace, ctx| {
             workspace.vertical_tabs_panel_open = false;
             workspace.snapshot(ctx.window_id(), false, ctx)
         });
-        let open_snapshot = workspace.update(&mut app, |workspace, ctx| {
+        closed_snapshot.vertical_tabs_panel_width = Some(312.);
+        let mut open_snapshot = workspace.update(&mut app, |workspace, ctx| {
             workspace.vertical_tabs_panel_open = true;
             workspace.snapshot(ctx.window_id(), false, ctx)
         });
+        open_snapshot.vertical_tabs_panel_width = Some(428.);
 
         let restored_closed = restored_workspace(&mut app, closed_snapshot);
         let restored_open = restored_workspace(&mut app, open_snapshot);
 
         restored_closed.read(&app, |workspace, _| {
             assert!(!workspace.vertical_tabs_panel_open);
+            assert_eq!(workspace.vertical_tabs_panel.width(), 312.);
         });
         restored_open.read(&app, |workspace, _| {
             assert!(workspace.vertical_tabs_panel_open);
+            assert_eq!(workspace.vertical_tabs_panel.width(), 428.);
         });
     });
 }
@@ -3300,9 +3305,11 @@ fn test_vertical_tabs_panel_inherits_transferred_tab_source_window_state() {
 
         transferred_closed.read(&app, |workspace, _| {
             assert!(!workspace.vertical_tabs_panel_open);
+            assert_eq!(workspace.vertical_tabs_panel.width(), 312.);
         });
         transferred_open.read(&app, |workspace, _| {
             assert!(workspace.vertical_tabs_panel_open);
+            assert_eq!(workspace.vertical_tabs_panel.width(), 428.);
         });
     });
 }

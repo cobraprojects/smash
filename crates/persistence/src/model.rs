@@ -43,6 +43,9 @@ pub struct Window {
     pub agent_management_filters: Option<String>,
     pub left_panel_open: Option<bool>,
     pub vertical_tabs_panel_open: Option<bool>,
+    pub vertical_tabs_panel_width: Option<f32>,
+    pub left_panel_width: Option<f32>,
+    pub right_panel_width: Option<f32>,
     pub team_uid: Option<String>,
 }
 
@@ -341,6 +344,9 @@ pub struct NewWindow {
     pub agent_management_filters: Option<String>,
     pub left_panel_open: Option<bool>,
     pub vertical_tabs_panel_open: Option<bool>,
+    pub vertical_tabs_panel_width: Option<f32>,
+    pub left_panel_width: Option<f32>,
+    pub right_panel_width: Option<f32>,
     pub team_uid: Option<String>,
 }
 

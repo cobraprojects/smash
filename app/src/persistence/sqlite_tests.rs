@@ -17,7 +17,6 @@ use super::{
     get_all_codebase_index_metadata, read_sqlite_data, save_app_state,
     save_codebase_index_metadata, setup_database, start_writer,
 };
-
 use crate::app_state::{
     AppState, CodePaneSnapShot, CodePaneTabSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot,
     TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
@@ -426,8 +425,9 @@ fn test_terminal_window_snapshot(vertical_tabs_panel_open: bool) -> WindowSnapsh
         warp_drive_index_width: None,
         left_panel_open: false,
         vertical_tabs_panel_open,
-        left_panel_width: None,
-        right_panel_width: None,
+        vertical_tabs_panel_width: Some(if vertical_tabs_panel_open { 428. } else { 312. }),
+        left_panel_width: Some(360.),
+        right_panel_width: Some(520.),
         agent_management_filters: None,
         tab_groups: vec![],
     }
@@ -464,6 +464,26 @@ fn test_sqlite_round_trips_vertical_tabs_panel_open() {
             .map(|window| window.vertical_tabs_panel_open)
             .collect::<Vec<_>>(),
         vec![false, true]
+    );
+    assert_eq!(
+        restored
+            .windows
+            .iter()
+            .map(|window| window.vertical_tabs_panel_width)
+            .collect::<Vec<_>>(),
+        vec![Some(312.), Some(428.)]
+    );
+    assert!(
+        restored
+            .windows
+            .iter()
+            .all(|window| window.left_panel_width == Some(360.))
+    );
+    assert!(
+        restored
+            .windows
+            .iter()
+            .all(|window| window.right_panel_width == Some(520.))
     );
 }
 
@@ -541,6 +561,7 @@ fn test_sqlite_round_trips_custom_vertical_tabs_title() {
             warp_drive_index_width: None,
             left_panel_open: false,
             vertical_tabs_panel_open: false,
+            vertical_tabs_panel_width: None,
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,
@@ -620,6 +641,7 @@ fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
             warp_drive_index_width: None,
             left_panel_open: false,
             vertical_tabs_panel_open: false,
+            vertical_tabs_panel_width: None,
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,
@@ -739,6 +761,7 @@ fn test_sqlite_round_trips_tab_groups() {
             warp_drive_index_width: None,
             left_panel_open: false,
             vertical_tabs_panel_open: false,
+            vertical_tabs_panel_width: None,
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,
@@ -893,6 +916,7 @@ fn test_sqlite_round_trips_pinned_state() {
             warp_drive_index_width: None,
             left_panel_open: false,
             vertical_tabs_panel_open: false,
+            vertical_tabs_panel_width: None,
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,

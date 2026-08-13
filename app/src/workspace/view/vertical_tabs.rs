@@ -731,9 +731,18 @@ pub(super) struct VerticalTabsPanelState {
 
 impl Default for VerticalTabsPanelState {
     fn default() -> Self {
+        Self::with_restored_width(None)
+    }
+}
+
+impl VerticalTabsPanelState {
+    pub(super) fn with_restored_width(width: Option<f32>) -> Self {
+        let width = width
+            .filter(|width| width.is_finite())
+            .unwrap_or(PANEL_WIDTH);
         Self {
             scroll_state: ClippedScrollStateHandle::default(),
-            resizable_state: resizable_state_handle(PANEL_WIDTH),
+            resizable_state: resizable_state_handle(width),
             group_mouse_states: RefCell::default(),
             tab_group_mouse_states: RefCell::default(),
             pane_row_mouse_states: RefCell::default(),
@@ -766,6 +775,13 @@ impl Default for VerticalTabsPanelState {
             panel_right_click_mouse_state: Default::default(),
             show_settings_popup: false,
         }
+    }
+
+    pub(super) fn width(&self) -> f32 {
+        self.resizable_state
+            .lock()
+            .map(|state| state.size())
+            .unwrap_or(PANEL_WIDTH)
     }
 }
 
@@ -1739,6 +1755,9 @@ fn render_vertical_tabs_panel(
         .with_dragbar_side(drag_side)
         .on_resize(|ctx, _| {
             ctx.notify();
+        })
+        .on_end_resizing(|ctx, _| {
+            ctx.dispatch_action("workspace:save_app", ());
         })
         .with_bounds_callback(Box::new(|window_size| {
             let max_width = window_size.x() * MAX_PANEL_WIDTH_RATIO;
