@@ -9,6 +9,7 @@ use languages::language_by_local_filename;
 use pathfinder_color::ColorU;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
+use repo_metadata::repositories::DetectedRepositories;
 use settings::Setting as _;
 use warp_core::channel::{Channel, ChannelState};
 use warp_core::context_flag::ContextFlag;
@@ -28,7 +29,7 @@ use warpui::elements::{
     ScrollTarget, ScrollToPositionMode, ScrollbarWidth, Shrinkable, Stack, Text,
     resizable_state_handle,
 };
-use warpui::fonts::{Properties, Weight};
+use warpui::fonts::{FamilyId, Properties, Weight};
 use warpui::platform::Cursor;
 use warpui::prelude::Align;
 use warpui::text_layout::ClipConfig;
@@ -2740,8 +2741,9 @@ fn render_tab_group_header_icon_button(
 #[derive(Clone, Debug)]
 struct SessionSidebarPresentation {
     default_title: String,
+    repository_name: Option<String>,
     show_tab_count: bool,
-    working_directory: Option<String>,
+    working_directories: Vec<String>,
     git_branch: Option<String>,
 }
 
@@ -2761,8 +2763,16 @@ fn session_sidebar_presentation(
     app: &AppContext,
 ) -> SessionSidebarPresentation {
     let settings = TabSettings::as_ref(app);
-    let member_position = group.active_tab_index.min(members.len().saturating_sub(1));
-    let tab_index = members.get(member_position).map(|(index, _)| *index);
+    // The selected top tab is authoritative for the active session. Falling back to the
+    // persisted member-relative index keeps inactive sessions pointed at their last tab.
+    let tab_index = members
+        .iter()
+        .find(|(index, _)| *index == workspace.active_tab_index)
+        .map(|(index, _)| *index)
+        .or_else(|| {
+            let member_position = group.active_tab_index.min(members.len().saturating_sub(1));
+            members.get(member_position).map(|(index, _)| *index)
+        });
     let pane_group = tab_index
         .and_then(|index| workspace.tabs.get(index))
         .map(|tab| tab.pane_group.as_ref(app));
@@ -2771,43 +2781,117 @@ fn session_sidebar_presentation(
         .as_ref()
         .and_then(|view| resolved_terminal_working_directory(view.as_ref(app), app));
     let default_title = raw_working_directory
-        .as_deref()
-        .and_then(|path| Path::new(path).file_name())
-        .and_then(|name| name.to_str())
-        .filter(|name| !name.is_empty())
-        .map(str::to_string)
+        .clone()
         .or_else(|| pane_group.map(|pane_group| pane_group.display_title(app)))
         .filter(|title| !title.trim().is_empty())
         .unwrap_or_else(|| "New Session".to_string());
 
+    let git_branch = terminal_view
+        .as_ref()
+        .and_then(|view| view.as_ref(app).current_git_branch(app))
+        .filter(|branch| !branch.trim().is_empty());
+    let repository_name = terminal_view.as_ref().and_then(|view| {
+        let view = view.as_ref(app);
+        view.pwd_as_local_or_remote(app)
+            .and_then(|cwd| DetectedRepositories::as_ref(app).get_root_for_path(&cwd))
+            .and_then(|root| root.file_name().map(str::to_string))
+            // Repository detection is asynchronous. The presence of a branch is a safe
+            // temporary signal that the current directory itself is the repository title.
+            .or_else(|| {
+                git_branch.as_ref().and_then(|_| {
+                    raw_working_directory
+                        .as_deref()
+                        .and_then(|path| Path::new(path).file_name())
+                        .and_then(|name| name.to_str())
+                        .map(str::to_string)
+                })
+            })
+    });
+
     let show_details = *settings.session_sidebar_show_details;
-    let working_directory = show_details
-        .then_some(raw_working_directory)
-        .flatten()
-        .filter(|_| *settings.session_sidebar_show_working_directory)
-        .map(|path| {
-            if *settings.session_sidebar_compact_paths {
-                compact_session_path(path)
-            } else {
-                path
+    let mut working_directories = Vec::new();
+    if show_details && *settings.session_sidebar_show_working_directory {
+        for (member_tab_index, _) in members {
+            let Some(directory) = workspace
+                .tabs
+                .get(*member_tab_index)
+                .and_then(|tab| tab.pane_group.as_ref(app).focused_session_view(app))
+                .and_then(|view| resolved_terminal_working_directory(view.as_ref(app), app))
+            else {
+                continue;
+            };
+            // The generated session title already represents the selected tab. Show the
+            // remaining unique tab paths below it instead of rendering a duplicate row.
+            if group.name.is_none() && raw_working_directory.as_ref() == Some(&directory) {
+                continue;
             }
-        });
+            let directory = if *settings.session_sidebar_compact_paths {
+                compact_session_path(directory)
+            } else {
+                directory
+            };
+            if !working_directories.contains(&directory) {
+                working_directories.push(directory);
+            }
+        }
+    }
     let git_branch = show_details
-        .then(|| {
-            terminal_view
-                .as_ref()
-                .and_then(|view| view.as_ref(app).current_git_branch(app))
-        })
+        .then_some(git_branch)
         .flatten()
         .filter(|_| *settings.session_sidebar_show_git_branch)
         .filter(|branch| !branch.trim().is_empty());
 
     SessionSidebarPresentation {
         default_title,
+        repository_name,
         show_tab_count: show_details && *settings.session_sidebar_show_tab_count,
-        working_directory,
+        working_directories,
         git_branch,
     }
+}
+
+fn render_session_sidebar_title(
+    title: String,
+    repository_name: Option<&str>,
+    font_family: FamilyId,
+    main_text_color: WarpThemeFill,
+    accent_color: WarpThemeFill,
+) -> Box<dyn Element> {
+    let Some(repository_name) = repository_name.filter(|name| !name.is_empty()) else {
+        return Text::new_inline(title, font_family, 12.)
+            .with_clip(ClipConfig::ellipsis())
+            .with_color(main_text_color.into())
+            .finish();
+    };
+    let Some(prefix) = title.strip_suffix(repository_name) else {
+        return Text::new_inline(title, font_family, 12.)
+            .with_clip(ClipConfig::ellipsis())
+            .with_color(main_text_color.into())
+            .finish();
+    };
+
+    let mut row = Flex::row()
+        .with_main_axis_size(MainAxisSize::Min)
+        .with_cross_axis_alignment(CrossAxisAlignment::Center);
+    if !prefix.is_empty() {
+        row.add_child(
+            Shrinkable::new(
+                1.,
+                Text::new_inline(prefix.to_string(), font_family.clone(), 12.)
+                    .with_clip(ClipConfig::start())
+                    .with_color(main_text_color.into())
+                    .finish(),
+            )
+            .finish(),
+        );
+    }
+    row.add_child(
+        Text::new_inline(repository_name.to_string(), font_family, 12.)
+            .with_clip(ClipConfig::ellipsis())
+            .with_color(accent_color.into())
+            .finish(),
+    );
+    row.finish()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2860,20 +2944,28 @@ fn render_grouped_tabs_header(
         .with_height(VERTICAL_TABS_ICON_SIZE)
         .finish();
 
-    let title_element: Box<dyn Element> =
-        if let Some(editor) = rename_editor.filter(|_| is_being_renamed) {
-            render_inline_tab_rename_editor(editor, appearance, app)
-        } else {
-            let title_text = group.name.clone().unwrap_or_else(|| {
-                session_presentation
-                    .map(|presentation| presentation.default_title.clone())
-                    .unwrap_or_else(|| "New Session".to_string())
-            });
-            Text::new_inline(title_text, font_family, 12.)
-                .with_clip(ClipConfig::ellipsis())
-                .with_color(main_text_color.into())
-                .finish()
-        };
+    let title_element: Box<dyn Element> = if let Some(editor) =
+        rename_editor.filter(|_| is_being_renamed)
+    {
+        render_inline_tab_rename_editor(editor, appearance, app)
+    } else {
+        let title_text = group.name.clone().unwrap_or_else(|| {
+            session_presentation
+                .map(|presentation| presentation.default_title.clone())
+                .unwrap_or_else(|| "New Session".to_string())
+        });
+        render_session_sidebar_title(
+            title_text,
+            group
+                .name
+                .is_none()
+                .then(|| session_presentation.and_then(|value| value.repository_name.as_deref()))
+                .flatten(),
+            font_family,
+            main_text_color,
+            theme.accent(),
+        )
+    };
     let mut text_column = Flex::column()
         .with_main_axis_size(MainAxisSize::Min)
         .with_cross_axis_alignment(CrossAxisAlignment::Start)
@@ -2901,9 +2993,9 @@ fn render_grouped_tabs_header(
                 appearance,
             ));
         }
-        if let Some(directory) = presentation.working_directory.as_deref() {
+        for directory in &presentation.working_directories {
             text_column.add_child(
-                Text::new_inline(directory.to_string(), font_family, 10.)
+                Text::new_inline(directory.clone(), font_family, 10.)
                     .with_clip(ClipConfig::start())
                     .with_color(sub_text_color.into())
                     .finish(),

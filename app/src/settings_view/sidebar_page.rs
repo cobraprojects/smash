@@ -292,15 +292,35 @@ sidebar_toggle_widget!(
     ShowVerticalTabPanelInRestoredWindows,
     SidebarPageAction::ToggleOpenOnRestore
 );
-sidebar_toggle_widget!(
-    ShowDetailsWidget,
-    "sidebar session details metadata hide all",
-    "Show session details",
-    "Display enabled metadata beneath session names.",
-    session_sidebar_show_details,
-    SessionSidebarShowDetails,
-    SidebarPageAction::ToggleDetails
-);
+#[derive(Default)]
+struct ShowDetailsWidget {
+    switch_state: SwitchStateHandle,
+}
+
+impl SettingsWidget for ShowDetailsWidget {
+    type View = SidebarSettingsPageView;
+
+    fn search_terms(&self) -> &str {
+        "sidebar session details metadata hide all"
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        render_switch_row(
+            "Hide sidebar details",
+            "Hide tab counts, branches, and working-directory paths beneath session titles.",
+            !*TabSettings::as_ref(app).session_sidebar_show_details,
+            self.switch_state.clone(),
+            SidebarPageAction::ToggleDetails,
+            local_only::<SessionSidebarShowDetails>(view, app),
+            appearance,
+        )
+    }
+}
 sidebar_toggle_widget!(
     ShowTabCountWidget,
     "sidebar session tab count",
@@ -313,8 +333,8 @@ sidebar_toggle_widget!(
 sidebar_toggle_widget!(
     ShowWorkingDirectoryWidget,
     "sidebar session cwd path working directory project",
-    "Show working directory",
-    "Display the working directory of the session's last active tab.",
+    "Show tab paths",
+    "Display the unique working directories opened by the session's tabs.",
     session_sidebar_show_working_directory,
     SessionSidebarShowWorkingDirectory,
     SidebarPageAction::ToggleWorkingDirectory
