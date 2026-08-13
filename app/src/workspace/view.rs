@@ -2378,9 +2378,7 @@ impl Workspace {
     /// Called from the onboarding flow before the session config modal is shown.
     pub(crate) fn open_vertical_tabs_panel_if_enabled(&mut self, ctx: &mut ViewContext<Self>) {
         if FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs {
-            self.vertical_tabs_panel_open = true;
-            self.sync_window_button_visibility(ctx);
-            ctx.notify();
+            self.set_vertical_tabs_panel_open(true, ctx);
         }
     }
 
@@ -2393,8 +2391,7 @@ impl Workspace {
         TabSettings::handle(ctx).update(ctx, |settings, ctx| {
             let _ = settings.use_vertical_tabs.set_value(true, ctx);
         });
-        self.vertical_tabs_panel_open = true;
-        self.sync_window_button_visibility(ctx);
+        self.set_vertical_tabs_panel_open(true, ctx);
 
         // The pinned position is captured lazily on the first step change
         // (when the user advances past the welcome banner). At that point the
@@ -3543,8 +3540,11 @@ impl Workspace {
         ws.sync_settings_error_state_into_settings_pane(ctx);
 
         let weak_handle = ctx.handle();
-        WorkspaceRegistry::handle(ctx).update(ctx, |registry, _| {
+        let sidebar_visible = ws.vertical_tabs_panel_open;
+        WorkspaceRegistry::handle(ctx).update(ctx, |registry, ctx| {
             registry.register(window_id, weak_handle);
+            registry.set_sidebar_visible(window_id, sidebar_visible);
+            ctx.emit(());
         });
 
         ws
@@ -3780,7 +3780,7 @@ impl Workspace {
                 // During HOA onboarding, keep the vertical tabs panel open
                 // regardless of the setting so the callout stays anchored.
                 if self.hoa_onboarding_flow.is_none() {
-                    self.vertical_tabs_panel_open = vertical_tabs_enabled;
+                    self.set_vertical_tabs_panel_open(vertical_tabs_enabled, ctx);
                 }
 
                 if vertical_tabs_enabled {
@@ -3807,7 +3807,7 @@ impl Workspace {
                     && *TabSettings::as_ref(ctx).use_vertical_tabs
                     && *TabSettings::as_ref(ctx).show_vertical_tab_panel_in_restored_windows
                 {
-                    self.vertical_tabs_panel_open = true;
+                    self.set_vertical_tabs_panel_open(true, ctx);
                 }
                 ctx.notify();
             }
@@ -7075,8 +7075,7 @@ impl Workspace {
 
         if use_vertical_tabs {
             if !self.vertical_tabs_panel_open {
-                self.vertical_tabs_panel_open = true;
-                self.sync_window_button_visibility(ctx);
+                self.set_vertical_tabs_panel_open(true, ctx);
             }
             self.open_tab_configs_menu(
                 NewSessionMenuAnchor::AddTabButton(Vector2F::zero()),
@@ -9460,14 +9459,22 @@ impl Workspace {
         ctx.notify();
     }
 
-    fn toggle_vertical_tabs_panel(&mut self, ctx: &mut ViewContext<Self>) {
-        self.vertical_tabs_panel_open = !self.vertical_tabs_panel_open;
+    fn set_vertical_tabs_panel_open(&mut self, open: bool, ctx: &mut ViewContext<Self>) {
+        self.vertical_tabs_panel_open = open;
+        WorkspaceRegistry::handle(ctx).update(ctx, |registry, ctx| {
+            registry.set_sidebar_visible(self.window_id, self.vertical_tabs_panel_open);
+            ctx.emit(());
+        });
         if !self.vertical_tabs_panel_open {
             self.close_vertical_tabs_settings_popup();
             self.vertical_tabs_panel.clear_detail_sidecar();
         }
         self.sync_window_button_visibility(ctx);
         ctx.notify();
+    }
+
+    fn toggle_vertical_tabs_panel(&mut self, ctx: &mut ViewContext<Self>) {
+        self.set_vertical_tabs_panel_open(!self.vertical_tabs_panel_open, ctx);
     }
 
     fn close_vertical_tabs_settings_popup(&mut self) {

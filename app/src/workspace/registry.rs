@@ -10,6 +10,7 @@ use super::Workspace;
 /// that `views_of_type::<Workspace>` performs.
 pub struct WorkspaceRegistry {
     workspaces: HashMap<WindowId, WeakViewHandle<Workspace>>,
+    sidebar_visibility: HashMap<WindowId, bool>,
 }
 
 impl Default for WorkspaceRegistry {
@@ -22,6 +23,7 @@ impl WorkspaceRegistry {
     pub fn new() -> Self {
         Self {
             workspaces: HashMap::new(),
+            sidebar_visibility: HashMap::new(),
         }
     }
 
@@ -33,6 +35,15 @@ impl WorkspaceRegistry {
     /// Unregisters the workspace for the given window.
     pub fn unregister(&mut self, window_id: WindowId) {
         self.workspaces.remove(&window_id);
+        self.sidebar_visibility.remove(&window_id);
+    }
+
+    pub fn set_sidebar_visible(&mut self, window_id: WindowId, visible: bool) {
+        self.sidebar_visibility.insert(window_id, visible);
+    }
+
+    pub fn is_sidebar_visible(&self, window_id: WindowId) -> Option<bool> {
+        self.sidebar_visibility.get(&window_id).copied()
     }
 
     /// Returns the workspace for the given window, if it is still alive.

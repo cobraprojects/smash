@@ -3,11 +3,12 @@ use std::collections::HashMap;
 
 use settings::{Setting, ToggleableSetting};
 use warp_errors::report_if_error;
-use warpui::elements::{Element, MouseStateHandle};
-use warpui::ui_components::button::ButtonVariant;
+use warpui::elements::Element;
 use warpui::ui_components::components::UiComponent;
 use warpui::ui_components::switch::SwitchStateHandle;
-use warpui::{AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle};
+use warpui::{
+    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle, WindowId,
+};
 
 use super::SettingsSection;
 use super::settings_page::{
@@ -15,20 +16,26 @@ use super::settings_page::{
     SettingsPageViewHandle, SettingsWidget, ToggleState, render_body_item,
 };
 use crate::appearance::Appearance;
-use crate::workspace::WorkspaceAction;
 use crate::workspace::tab_settings::{
     SessionSidebarCompactPaths, SessionSidebarShowDetails, SessionSidebarShowGitBranch,
     SessionSidebarShowTabCount, SessionSidebarShowWorkingDirectory,
     ShowVerticalTabPanelInRestoredWindows, TabSettings, UseVerticalTabs,
 };
+use crate::workspace::{WorkspaceAction, WorkspaceRegistry};
 
 pub struct SidebarSettingsPageView {
     page: PageType<Self>,
+    window_id: WindowId,
     local_only_icon_tooltip_states: RefCell<HashMap<String, warpui::elements::MouseStateHandle>>,
 }
 
 impl SidebarSettingsPageView {
-    pub fn new(_ctx: &mut ViewContext<Self>) -> Self {
+    pub fn new(ctx: &mut ViewContext<Self>) -> Self {
+        let workspace_registry = WorkspaceRegistry::handle(ctx);
+        ctx.subscribe_to_model(&workspace_registry, |_view, _registry, (), ctx| {
+            ctx.notify();
+        });
+
         Self {
             page: PageType::new_categorized(
                 vec![
@@ -59,6 +66,7 @@ impl SidebarSettingsPageView {
                 ],
                 Some("Sidebar"),
             ),
+            window_id: ctx.window_id(),
             local_only_icon_tooltip_states: RefCell::default(),
         }
     }
@@ -232,7 +240,7 @@ sidebar_toggle_widget!(
 
 #[derive(Default)]
 struct ToggleSidebarVisibilityWidget {
-    mouse_state: MouseStateHandle,
+    switch_state: SwitchStateHandle,
 }
 
 impl SettingsWidget for ToggleSidebarVisibilityWidget {
@@ -244,14 +252,17 @@ impl SettingsWidget for ToggleSidebarVisibilityWidget {
 
     fn render(
         &self,
-        _view: &Self::View,
+        view: &Self::View,
         appearance: &Appearance,
-        _app: &AppContext,
+        app: &AppContext,
     ) -> Box<dyn Element> {
-        let button = appearance
+        let checked = WorkspaceRegistry::as_ref(app)
+            .is_sidebar_visible(view.window_id)
+            .unwrap_or(false);
+        let switch = appearance
             .ui_builder()
-            .button(ButtonVariant::Secondary, self.mouse_state.clone())
-            .with_text_label("Show / hide".into())
+            .switch(self.switch_state.clone())
+            .check(checked)
             .build()
             .on_click(|ctx, _, _| {
                 ctx.dispatch_typed_action(WorkspaceAction::ToggleVerticalTabsPanel);
@@ -264,7 +275,7 @@ impl SettingsWidget for ToggleSidebarVisibilityWidget {
             LocalOnlyIconState::Hidden,
             ToggleState::Enabled,
             appearance,
-            button,
+            switch,
             Some(
                 "Toggle the sidebar in this window without hiding or changing the top tabs."
                     .to_string(),
