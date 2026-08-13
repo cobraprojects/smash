@@ -125,6 +125,7 @@ const CHANNEL_SIZE: usize = 1024;
 const COMMANDS_COUNT_LIMIT: i64 = 10000;
 
 const WARP_SQLITE_FILE_NAME: &str = "warp.sqlite";
+const SMASH_SQLITE_FILE_NAME: &str = "smash.sqlite";
 
 /// Runs any migrations and creates the Sqlite database if it doesn't exist.
 /// Reads from the sqlite database to get the app state for session restoration.
@@ -474,7 +475,22 @@ pub fn database_file_path_for_current_scope() -> PathBuf {
 fn app_database_file_path() -> PathBuf {
     warp_core::paths::secure_state_dir()
         .unwrap_or_else(warp_core::paths::state_dir)
-        .join(WARP_SQLITE_FILE_NAME)
+        .join(app_database_file_name())
+}
+
+fn app_database_file_name() -> &'static str {
+    database_file_name_for_app_id(&warp_core::channel::ChannelState::app_id())
+}
+
+fn database_file_name_for_app_id(app_id: &warp_core::AppId) -> &'static str {
+    if app_id.qualifier() == "app"
+        && app_id.organization() == "smash"
+        && app_id.application_name() == "Smash"
+    {
+        SMASH_SQLITE_FILE_NAME
+    } else {
+        WARP_SQLITE_FILE_NAME
+    }
 }
 
 fn tui_database_file_path() -> PathBuf {

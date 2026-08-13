@@ -109,7 +109,11 @@ impl ToolPanelView {
                 }
             }
             ToolPanelView::ConversationListView => {
-                if AuthStateProvider::as_ref(app)
+                if warp_core::channel::ChannelState::channel() == warp_core::channel::Channel::Oss {
+                    // Smash conversations are local and persisted in its own
+                    // SQLite database, so they do not require a Warp account.
+                    ToolPanelAvailability::Available
+                } else if AuthStateProvider::as_ref(app)
                     .get()
                     .is_anonymous_or_logged_out()
                 {

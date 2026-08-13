@@ -12,10 +12,12 @@ use warp_core::features::FeatureFlag;
 use warp_graphql::scalars::time::ServerTimestamp;
 
 use super::{
-    app_database_file_path, database_file_path_for_current_scope, database_file_path_for_scope,
-    decode_path, deduplicate_events, encode_path, get_all_codebase_index_metadata,
-    read_sqlite_data, save_app_state, save_codebase_index_metadata, setup_database, start_writer,
+    app_database_file_path, database_file_name_for_app_id, database_file_path_for_current_scope,
+    database_file_path_for_scope, decode_path, deduplicate_events, encode_path,
+    get_all_codebase_index_metadata, read_sqlite_data, save_app_state,
+    save_codebase_index_metadata, setup_database, start_writer,
 };
+
 use crate::app_state::{
     AppState, CodePaneSnapShot, CodePaneTabSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot,
     TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
@@ -36,6 +38,18 @@ use crate::terminal::model::session::SessionId;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::workspace::tab_group::TabGroupId;
 use crate::workspaces::user_profiles::UserProfileWithUID;
+
+#[test]
+fn smash_uses_smash_database_filename() {
+    assert_eq!(
+        database_file_name_for_app_id(&warp_core::AppId::new("app", "smash", "Smash")),
+        "smash.sqlite"
+    );
+    assert_eq!(
+        database_file_name_for_app_id(&warp_core::AppId::new("dev", "warp", "WarpOss")),
+        "warp.sqlite"
+    );
+}
 
 #[test]
 fn app_scope_database_path_matches_app_database_path() {

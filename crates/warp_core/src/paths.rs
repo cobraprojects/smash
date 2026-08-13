@@ -398,6 +398,15 @@ fn project_dirs_for_app_id(
 /// * [`containerURLForSecurityApplicationGroupIdentifier`](https://developer.apple.com/documentation/foundation/filemanager/containerurl(forsecurityapplicationgroupidentifier:)?language=objc)
 #[cfg(target_os = "macos")]
 pub fn app_group_container_path() -> Option<PathBuf> {
+    // The upstream Warp app uses a team-owned App Group. Smash has its own
+    // bundle identity and must never probe Warp's container: macOS treats that
+    // as access to another app's protected data and prompts on every rebuilt
+    // development launch. Smash falls back to its app-scoped Application
+    // Support directory instead.
+    if !uses_warp_app_group(&ChannelState::app_id()) {
+        return None;
+    }
+
     use std::sync::LazyLock;
     static CONTAINER_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
         use objc2_foundation::{NSFileManager, NSString};
@@ -422,6 +431,11 @@ pub fn app_group_container_path() -> Option<PathBuf> {
         None
     });
     LazyLock::force(&CONTAINER_PATH).clone()
+}
+
+#[cfg(target_os = "macos")]
+fn uses_warp_app_group(app_id: &AppId) -> bool {
+    app_id.qualifier() == "dev" && app_id.organization() == "warp"
 }
 
 /// Returns the path to resources included in the Warp distribution.

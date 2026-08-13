@@ -188,6 +188,13 @@ fn test_project_path_for_warp_app_id() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn test_smash_does_not_probe_warp_app_group() {
+    assert!(uses_warp_app_group(&AppId::new("dev", "warp", "WarpOss")));
+    assert!(!uses_warp_app_group(&AppId::new("app", "smash", "Smash")));
+}
+
 #[test]
 fn test_project_path_for_warp_dev_app_id() {
     let project_dirs = project_dirs_for_app_id(AppId::new("dev", "warp", "WarpDev"), None)
