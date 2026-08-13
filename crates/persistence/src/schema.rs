@@ -363,6 +363,7 @@ diesel::table! {
         color -> Nullable<Text>,
         collapsed -> Bool,
         pinned -> Bool,
+        active_tab_index -> Integer,
     }
 }
 

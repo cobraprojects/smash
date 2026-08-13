@@ -1,0 +1,1 @@
+ALTER TABLE tab_groups ADD COLUMN active_tab_index INTEGER NOT NULL DEFAULT 0;

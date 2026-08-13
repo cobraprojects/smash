@@ -748,6 +748,7 @@ fn test_sqlite_round_trips_tab_groups() {
                 color: SelectedTabColor::Color(AnsiColorIdentifier::Blue),
                 collapsed: true,
                 pinned: false,
+                active_tab_index: 3,
             }],
         }],
         active_window_index: Some(0),
@@ -772,6 +773,7 @@ fn test_sqlite_round_trips_tab_groups() {
         SelectedTabColor::Color(AnsiColorIdentifier::Blue)
     );
     assert!(restored_group.collapsed);
+    assert_eq!(restored_group.active_tab_index, 3);
 
     // The in-memory `TabGroupId` is minted fresh on restore, so we check that
     // the grouped tab points at the restored group, and the ungrouped tab
@@ -901,6 +903,7 @@ fn test_sqlite_round_trips_pinned_state() {
                     color: SelectedTabColor::default(),
                     collapsed: false,
                     pinned: true,
+                    active_tab_index: 0,
                 },
                 TabGroupSnapshot {
                     id: unpinned_group_id,
@@ -908,6 +911,7 @@ fn test_sqlite_round_trips_pinned_state() {
                     color: SelectedTabColor::default(),
                     collapsed: false,
                     pinned: false,
+                    active_tab_index: 0,
                 },
             ],
         }],

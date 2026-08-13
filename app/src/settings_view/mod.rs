@@ -25,6 +25,7 @@ use settings_page::{
     SettingsPageViewHandle,
 };
 use show_blocks_view::{ShowBlocksEvent, ShowBlocksView};
+use sidebar_page::SidebarSettingsPageView;
 use teams_page::{TeamsPageView, TeamsPageViewEvent};
 use warp_core::channel::ChannelState;
 use warp_core::context_flag::ContextFlag;
@@ -109,6 +110,7 @@ mod set_default_model_modal;
 mod settings_file_footer;
 pub(crate) mod settings_page;
 mod show_blocks_view;
+mod sidebar_page;
 mod tab_menu;
 mod teams_page;
 mod telemetry;
@@ -278,6 +280,7 @@ pub enum SettingsSection {
     MCPServers,
     BillingAndUsage,
     Appearance,
+    Sidebar,
     Features,
     Keybindings,
     Privacy,
@@ -320,6 +323,7 @@ impl Display for SettingsSection {
         match self {
             SettingsSection::BillingAndUsage => write!(f, "Billing and usage"),
             SettingsSection::Keybindings => write!(f, "Keyboard shortcuts"),
+            SettingsSection::Sidebar => write!(f, "Sidebar"),
             SettingsSection::SharedBlocks => write!(f, "Shared blocks"),
             SettingsSection::MCPServers => write!(f, "MCP Servers"),
             SettingsSection::Scripting => write!(f, "Scripting"),
@@ -428,6 +432,7 @@ impl FromStr for SettingsSection {
             "MCP Servers" => Ok(Self::MCPServers),
             "Billing and usage" => Ok(Self::BillingAndUsage),
             "Appearance" => Ok(Self::Appearance),
+            "Sidebar" => Ok(Self::Sidebar),
             "Code" => Ok(Self::Code),
             "Features" => Ok(Self::Features),
             "Keyboard shortcuts" => Ok(Self::Keybindings),
@@ -1136,6 +1141,7 @@ macro_rules! update_page {
         match $handle {
             SettingsPageViewHandle::Main(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Appearance(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Sidebar(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Features(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::SharedBlocks(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Keybindings(handle) => $ctx.update_view(handle, $update),
@@ -1205,6 +1211,8 @@ impl SettingsView {
         ctx.subscribe_to_view(&appearance_page_handle, |me, _, event, ctx| {
             me.handle_appearance_page_event(event, ctx);
         });
+
+        let sidebar_page_handle = ctx.add_typed_action_view(SidebarSettingsPageView::new);
 
         // Features page
         let features_page_handle = ctx.add_typed_action_view(|ctx| {
@@ -1352,6 +1360,7 @@ impl SettingsView {
             SettingsPage::new(code_page_handle),
             SettingsPage::new(teams_page_handle),
             SettingsPage::new(appearance_page_handle),
+            SettingsPage::new(sidebar_page_handle),
             SettingsPage::new(features_page_handle),
             SettingsPage::new(keybindings_handle),
             SettingsPage::new(platform_page_handle),
@@ -1389,6 +1398,7 @@ impl SettingsView {
                     ],
                 )),
                 SettingsNavItem::Page(SettingsSection::Appearance),
+                SettingsNavItem::Page(SettingsSection::Sidebar),
                 SettingsNavItem::Page(SettingsSection::Features),
                 SettingsNavItem::Page(SettingsSection::Keybindings),
                 SettingsNavItem::Page(SettingsSection::Warpify),
@@ -2246,6 +2256,7 @@ impl SettingsView {
             SettingsPageViewHandle::Keybindings(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Features(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Appearance(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Sidebar(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::BillingAndUsage(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::About(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::OzCloudAPIKeys(v) => v.as_ref(app).should_render(app),

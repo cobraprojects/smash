@@ -184,6 +184,8 @@ pub enum WorkspaceAction {
     CloseTabGroup(TabGroupId),
     /// Toggle collapsed state for the given tab group.
     ToggleTabGroupCollapsed(TabGroupId),
+    /// Activates a session and restores the last tab focused inside it.
+    ActivateSession(TabGroupId),
     /// Opens an inline editor over the given group's header for renaming.
     RenameTabGroup(TabGroupId),
     /// Cancels any active rename (tab, pane, or group) without committing the
@@ -234,6 +236,9 @@ pub enum WorkspaceAction {
     },
     UngroupTabs(TabGroupId),
     NewTabInGroup(TabGroupId),
+    /// Creates a tab inside the active session, creating an implicit session
+    /// for a legacy ungrouped tab when needed.
+    NewTabInActiveSession,
     MoveTabGroupUp(TabGroupId),
     MoveTabGroupDown(TabGroupId),
     CloseTabsOutsideGroup(TabGroupId),
@@ -959,6 +964,7 @@ impl WorkspaceAction {
             | CloseTabsRightActiveTab
             | CloseTabGroup(_)
             | ToggleTabGroupCollapsed(_)
+            | ActivateSession(_)
             | RenameTabGroup(_)
             | NewTabGroupFromTab(_)
             | MoveTabToGroup { .. }
@@ -970,6 +976,7 @@ impl WorkspaceAction {
             | RemoveActiveOrSelectedTabsFromGroup
             | UngroupTabs(_)
             | NewTabInGroup(_)
+            | NewTabInActiveSession
             | MoveTabGroupUp(_)
             | MoveTabGroupDown(_)
             | CloseTabsOutsideGroup(_)

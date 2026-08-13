@@ -70,6 +70,8 @@ pub struct TabGroupSnapshot {
     pub color: SelectedTabColor,
     pub collapsed: bool,
     pub pinned: bool,
+    /// Zero-based member index last focused within this session.
+    pub active_tab_index: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -37,6 +37,8 @@ and keep the model configuration and credentials local.
 - A model picker that shows only models available from your connected providers.
 - SSH-aware agent actions: commands run through the active remote shell without installing Smash,
   Codex, Claude, or another agent on the server.
+- Session-based workspace navigation: ordered sessions in a configurable sidebar, with each
+  session's ordered tabs kept across the top and restored from the local database.
 - Project sidebar and file explorer for navigating local workspaces.
 - Integrated editor, code-review panel, and diff viewer for inspecting agent changes.
 - Terminal blocks, tabs, panes, command history, and the other core terminal workflows inherited

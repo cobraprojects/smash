@@ -10,6 +10,7 @@ use pathfinder_color::ColorU;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
 use settings::Setting as _;
+use warp_core::channel::{Channel, ChannelState};
 use warp_core::context_flag::ContextFlag;
 use warp_core::telemetry::TelemetryEvent as _;
 use warp_core::ui::Icon as WarpIcon;
@@ -2736,6 +2737,79 @@ fn render_tab_group_header_icon_button(
 /// `collapsed_member_kinds` is the deduped list of pane kinds used to build the
 /// icon collage shown in place of the chevron when the group is collapsed.
 /// Pass `None` when the group is expanded; the chevron is rendered instead.
+#[derive(Clone, Debug)]
+struct SessionSidebarPresentation {
+    default_title: String,
+    show_tab_count: bool,
+    working_directory: Option<String>,
+    git_branch: Option<String>,
+}
+
+fn compact_session_path(path: String) -> String {
+    Path::new(&path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .unwrap_or(path)
+}
+
+fn session_sidebar_presentation(
+    workspace: &Workspace,
+    group: &TabGroup,
+    members: &[(usize, Option<Vec<PaneId>>)],
+    app: &AppContext,
+) -> SessionSidebarPresentation {
+    let settings = TabSettings::as_ref(app);
+    let member_position = group.active_tab_index.min(members.len().saturating_sub(1));
+    let tab_index = members.get(member_position).map(|(index, _)| *index);
+    let pane_group = tab_index
+        .and_then(|index| workspace.tabs.get(index))
+        .map(|tab| tab.pane_group.as_ref(app));
+    let terminal_view = pane_group.and_then(|pane_group| pane_group.focused_session_view(app));
+    let raw_working_directory = terminal_view
+        .as_ref()
+        .and_then(|view| resolved_terminal_working_directory(view.as_ref(app), app));
+    let default_title = raw_working_directory
+        .as_deref()
+        .and_then(|path| Path::new(path).file_name())
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .or_else(|| pane_group.map(|pane_group| pane_group.display_title(app)))
+        .filter(|title| !title.trim().is_empty())
+        .unwrap_or_else(|| "New Session".to_string());
+
+    let show_details = *settings.session_sidebar_show_details;
+    let working_directory = show_details
+        .then_some(raw_working_directory)
+        .flatten()
+        .filter(|_| *settings.session_sidebar_show_working_directory)
+        .map(|path| {
+            if *settings.session_sidebar_compact_paths {
+                compact_session_path(path)
+            } else {
+                path
+            }
+        });
+    let git_branch = show_details
+        .then(|| {
+            terminal_view
+                .as_ref()
+                .and_then(|view| view.as_ref(app).current_git_branch(app))
+        })
+        .flatten()
+        .filter(|_| *settings.session_sidebar_show_git_branch)
+        .filter(|branch| !branch.trim().is_empty());
+
+    SessionSidebarPresentation {
+        default_title,
+        show_tab_count: show_details && *settings.session_sidebar_show_tab_count,
+        working_directory,
+        git_branch,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn render_grouped_tabs_header(
     group: &TabGroup,
@@ -2747,6 +2821,7 @@ fn render_grouped_tabs_header(
     is_being_renamed: bool,
     rename_editor: Option<&ViewHandle<EditorView>>,
     collapsed_member_kinds: Option<&[SummaryPaneKind]>,
+    session_presentation: Option<&SessionSidebarPresentation>,
     app: &AppContext,
 ) -> Box<dyn Element> {
     let appearance = Appearance::as_ref(app);
@@ -2789,31 +2864,65 @@ fn render_grouped_tabs_header(
         if let Some(editor) = rename_editor.filter(|_| is_being_renamed) {
             render_inline_tab_rename_editor(editor, appearance, app)
         } else {
-            let title_text = group
-                .name
-                .clone()
-                .unwrap_or_else(|| "New Group".to_string());
+            let title_text = group.name.clone().unwrap_or_else(|| {
+                session_presentation
+                    .map(|presentation| presentation.default_title.clone())
+                    .unwrap_or_else(|| "New Session".to_string())
+            });
             Text::new_inline(title_text, font_family, 12.)
                 .with_clip(ClipConfig::ellipsis())
                 .with_color(main_text_color.into())
                 .finish()
         };
-    let subtitle_text = if member_count == 1 {
-        "1 tab".to_string()
-    } else {
-        format!("{member_count} tabs")
-    };
-    let subtitle = Text::new_inline(subtitle_text, font_family, 10.)
-        .with_clip(ClipConfig::ellipsis())
-        .with_color(sub_text_color.into())
-        .finish();
-    let text_column: Box<dyn Element> = Flex::column()
+    let mut text_column = Flex::column()
         .with_main_axis_size(MainAxisSize::Min)
         .with_cross_axis_alignment(CrossAxisAlignment::Start)
         .with_spacing(1.)
-        .with_child(title_element)
-        .with_child(subtitle)
-        .finish();
+        .with_child(title_element);
+    if let Some(presentation) = session_presentation {
+        if presentation.show_tab_count {
+            let subtitle_text = if member_count == 1 {
+                "1 tab".to_string()
+            } else {
+                format!("{member_count} tabs")
+            };
+            text_column.add_child(
+                Text::new_inline(subtitle_text, font_family, 10.)
+                    .with_clip(ClipConfig::ellipsis())
+                    .with_color(sub_text_color.into())
+                    .finish(),
+            );
+        }
+        if let Some(branch) = presentation.git_branch.as_deref() {
+            text_column.add_child(render_git_branch_text(
+                branch,
+                sub_text_color,
+                10.,
+                appearance,
+            ));
+        }
+        if let Some(directory) = presentation.working_directory.as_deref() {
+            text_column.add_child(
+                Text::new_inline(directory.to_string(), font_family, 10.)
+                    .with_clip(ClipConfig::start())
+                    .with_color(sub_text_color.into())
+                    .finish(),
+            );
+        }
+    } else {
+        let subtitle_text = if member_count == 1 {
+            "1 tab".to_string()
+        } else {
+            format!("{member_count} tabs")
+        };
+        text_column.add_child(
+            Text::new_inline(subtitle_text, font_family, 10.)
+                .with_clip(ClipConfig::ellipsis())
+                .with_color(sub_text_color.into())
+                .finish(),
+        );
+    }
+    let text_column = text_column.finish();
 
     let action_buttons = if show_action_buttons {
         let kebab_button = SavePosition::new(
@@ -2931,14 +3040,21 @@ fn render_grouped_tabs_header(
     .with_defer_events_to_children();
 
     // Click toggles collapse; double-click renames; right-click opens the group menu.
+    let is_session_sidebar = ChannelState::channel() == Channel::Oss;
     hoverable = hoverable.on_click(move |ctx, _, _| {
-        ctx.dispatch_typed_action(WorkspaceAction::ToggleTabGroupCollapsed(group_id));
+        if is_session_sidebar {
+            ctx.dispatch_typed_action(WorkspaceAction::ActivateSession(group_id));
+        } else {
+            ctx.dispatch_typed_action(WorkspaceAction::ToggleTabGroupCollapsed(group_id));
+        }
     });
     hoverable = hoverable.on_double_click(move |ctx, _, _| {
         // The first click of a double-click already toggled the group's collapsed
         // state via `on_click`. Undo that toggle so double-clicking to rename leaves
         // the group's expanded/collapsed state unchanged.
-        ctx.dispatch_typed_action(WorkspaceAction::ToggleTabGroupCollapsed(group_id));
+        if !is_session_sidebar {
+            ctx.dispatch_typed_action(WorkspaceAction::ToggleTabGroupCollapsed(group_id));
+        }
         ctx.dispatch_typed_action(WorkspaceAction::RenameTabGroup(group_id));
     });
     hoverable = hoverable.on_right_click(move |ctx, _, position| {
@@ -2978,7 +3094,8 @@ fn render_grouped_tab_container(
     let any_member_active = members
         .iter()
         .any(|(tab_index, _)| *tab_index == workspace.active_tab_index);
-    let is_collapsed = group.collapsed;
+    let is_session_sidebar = ChannelState::channel() == Channel::Oss;
+    let is_collapsed = group.collapsed || is_session_sidebar;
     let first_member_index = members.first().map(|(index, _)| *index).unwrap_or(0);
 
     let resolved_mode = resolve_vertical_tabs_mode(app);
@@ -3012,6 +3129,8 @@ fn render_grouped_tab_container(
         // rendered then, so this skips the per-tab pane walk when expanded.
         let collapsed_member_kinds =
             is_collapsed.then(|| workspace.compute_group_member_kinds(group.id, app));
+        let session_presentation = is_session_sidebar
+            .then(|| session_sidebar_presentation(workspace, &group, members, app));
         let header = render_grouped_tabs_header(
             &group,
             member_count,
@@ -3022,6 +3141,7 @@ fn render_grouped_tab_container(
             is_being_renamed,
             rename_editor.as_ref(),
             collapsed_member_kinds.as_deref(),
+            session_presentation.as_ref(),
             app,
         );
         // While a pane is being dragged, the group header is a drop zone for the

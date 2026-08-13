@@ -41,6 +41,7 @@ use super::privacy_page::PrivacyPageView;
 use super::referrals_page::ReferralsPageView;
 use super::scripting_page::ScriptingSettingsPageView;
 use super::show_blocks_view::ShowBlocksView;
+use super::sidebar_page::SidebarSettingsPageView;
 use super::teams_page::TeamsPageView;
 use super::warp_drive_page::WarpDriveSettingsPageView;
 use super::warpify_page::WarpifyPageView;
@@ -104,6 +105,7 @@ pub trait SettingsPageMeta {
 pub enum SettingsPageViewHandle {
     Main(ViewHandle<MainSettingsPageView>),
     Appearance(ViewHandle<AppearanceSettingsPageView>),
+    Sidebar(ViewHandle<SidebarSettingsPageView>),
     Features(ViewHandle<FeaturesPageView>),
     SharedBlocks(ViewHandle<ShowBlocksView>),
     Keybindings(ViewHandle<KeybindingsView>),
@@ -128,6 +130,7 @@ impl SettingsPageViewHandle {
         match self {
             Main(view_handle) => ChildView::new(view_handle).finish(),
             Appearance(view_handle) => ChildView::new(view_handle).finish(),
+            Sidebar(view_handle) => ChildView::new(view_handle).finish(),
             Features(view_handle) => ChildView::new(view_handle).finish(),
             SharedBlocks(view_handle) => ChildView::new(view_handle).finish(),
             Keybindings(view_handle) => ChildView::new(view_handle).finish(),

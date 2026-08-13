@@ -32,6 +32,8 @@ pub struct TabGroup {
     pub draggable_state: DraggableState,
     /// True when this whole group is pinned to the front of the tab list.
     pub pinned: bool,
+    /// Zero-based member index last focused in this session.
+    pub active_tab_index: usize,
 }
 
 impl TabGroup {
@@ -44,6 +46,7 @@ impl TabGroup {
             collapsed: false,
             draggable_state: Default::default(),
             pinned: false,
+            active_tab_index: 0,
         }
     }
 }
