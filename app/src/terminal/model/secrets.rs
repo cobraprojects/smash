@@ -539,9 +539,6 @@ pub mod regexes {
     pub const GITHUB_USER_TO_SERVER_TOKEN: &str = r"\bghu_[A-Za-z0-9_]{36}\b";
     pub const GITHUB_SERVER_TO_SERVER_TOKEN: &str = r"\bghs_[A-Za-z0-9_]{36}\b";
 
-    /// Identifies Stripe API Keys. Source: <https://github.com/l4yton/RegHex#stripe-api-key>
-    pub const STRIPE_KEY: &str = r"\b(?:r|s)k_(test|live)_[0-9a-zA-Z]{24}\b";
-
     /// Identifies a Firebase Auth Domain.
     pub const FIREBASE_AUTH_DOMAIN: &str = r"\b([a-z0-9-]){1,30}(\.firebaseapp\.com)\b";
 
@@ -604,10 +601,6 @@ pub mod regexes {
         DefaultRegex {
             pattern: GITHUB_SERVER_TO_SERVER_TOKEN,
             name: "GitHub Server-to-Server Token",
-        },
-        DefaultRegex {
-            pattern: STRIPE_KEY,
-            name: "Stripe Key",
         },
         DefaultRegex {
             pattern: FIREBASE_AUTH_DOMAIN,

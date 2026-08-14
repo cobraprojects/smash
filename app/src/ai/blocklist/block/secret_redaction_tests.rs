@@ -363,21 +363,17 @@ fn test_detect_secrets_single_secret_custom_with_multibyte() {
 #[test]
 #[serial]
 fn test_detect_secrets_multiple_secrets() {
-    // Set custom regexes to include patterns that would previously have been system defaults
     secrets::set_user_and_enterprise_secret_regexes(
         [
             &Regex::new("ABCD").expect("Should be able to construct regex"),
-            &Regex::new(r"\bghp_[A-Za-z0-9_]{36}\b").expect("Should be able to construct regex"),
+            &Regex::new(r"\bTOKEN_[A-Z]{3}\b").expect("Should be able to construct regex"),
             &Regex::new(r"\b([a-z0-9-]){1,30}(\.firebaseapp\.com)\b")
                 .expect("Should be able to construct regex"),
-            &Regex::new(r"\b(?:r|s)k_(test|live)_[0-9a-zA-Z]{24}\b")
-                .expect("Should be able to construct regex"),
         ],
-        std::iter::empty(), // No enterprise secrets
+        std::iter::empty(),
     );
 
-    // Using custom secret, github token, firebase domain, and stripe key as secrets.
-    let text = "ABCD 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 foo baz warp-server-staging.firebaseapp.com bar \n foo sk_live_4eC39HqLyjWDarjtT1zdp7dc qux foo";
+    let text = "ABCD TOKEN_XYZ foo baz warp-server-staging.firebaseapp.com bar";
     let detected_secrets = find_secrets_in_text(text);
     assert_eq!(
         detected_secrets,
@@ -387,21 +383,16 @@ fn test_detect_secrets_multiple_secrets() {
                 byte_range: 0..4,
             },
             SecretRange {
-                char_range: 5..45,
-                byte_range: 5..45,
+                char_range: 5..14,
+                byte_range: 5..14,
             },
             SecretRange {
-                char_range: 54..89,
-                byte_range: 54..89,
+                char_range: 23..58,
+                byte_range: 23..58,
             },
-            SecretRange {
-                char_range: 100..132,
-                byte_range: 100..132,
-            }
         ]
     );
 }
-
 #[test]
 fn test_add_secret_redaction_to_text_no_secrets() {
     let text = Text::new_inline("This is a test.", FamilyId(0), 12.0);
@@ -536,51 +527,45 @@ fn test_detect_secrets_case_insensitive_opt_in() {
     );
 }
 
-// Test case sensitivity for default regex patterns
+// Test case sensitivity for user-defined regex patterns.
 #[test]
 #[serial]
-fn test_detect_secrets_default_regex_case_sensitivity() {
-    // Set user secret with a stripe-key like pattern, but enforce case sensitivity
+fn test_detect_secrets_custom_regex_case_sensitivity() {
     secrets::set_user_and_enterprise_secret_regexes(
-        [&Regex::new(r"\bsk_test_[0-9a-z]{24}\b").expect("Should be able to construct regex")],
-        std::iter::empty(), // No enterprise secrets
+        [&Regex::new(r"\bwidget_[0-9a-z]{24}\b").expect("Should be able to construct regex")],
+        std::iter::empty(),
     );
 
-    // Only matches keys that use lowercase
-    let text = "API keys: sk_test_abcdef123456789012345678 SK_TEST_ABCDEF123456789012345678";
+    let text = "Values: widget_abcdefghijklmnopqrstuvwx widget_ABCDEFGHIJKLMNOPQRSTUVWX";
     let detected_secrets = find_secrets_in_text(text);
     assert_eq!(
         detected_secrets,
         vec![SecretRange {
-            char_range: 10..42,
-            byte_range: 10..42,
+            char_range: 8..39,
+            byte_range: 8..39,
         }]
     );
 
-    // When we want case-insensitive matching, we explicitly use [A-Za-z]
     secrets::set_user_and_enterprise_secret_regexes(
-        [&Regex::new(r"\bsk_test_[0-9A-Za-z]{24}\b").expect("Should be able to construct regex")],
-        std::iter::empty(), // No enterprise secrets
+        [&Regex::new(r"\bwidget_[0-9A-Za-z]{24}\b").expect("Should be able to construct regex")],
+        std::iter::empty(),
     );
 
-    // Now matches both cases because of the explicit character class [A-Za-z]
-    let text = "API keys: sk_test_abcdef123456789012345678 sk_test_ABCDEF123456789012345678";
     let detected_secrets = find_secrets_in_text(text);
     assert_eq!(
         detected_secrets,
         vec![
             SecretRange {
-                char_range: 10..42,
-                byte_range: 10..42,
+                char_range: 8..39,
+                byte_range: 8..39,
             },
             SecretRange {
-                char_range: 43..75,
-                byte_range: 43..75,
-            }
+                char_range: 40..71,
+                byte_range: 40..71,
+            },
         ]
     );
 }
-
 // Regression test for panic `assertion failed: self.is_char_boundary(n)`.
 // End-to-end detection and redaction of custom multibyte secrets.
 #[test]

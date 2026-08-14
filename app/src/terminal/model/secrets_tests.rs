@@ -12,16 +12,6 @@ fn test_firebase_domain() {
 }
 
 #[test]
-fn test_stripe_api_key() {
-    let stripe_api_key = "sk_live_4eC39HqLyjWDarjtT1zdp7dc";
-    let stripe_restricted_api_key = "rk_live_4eC39HqLyjWDarjtT1zdp7dc";
-    let stripe_api_test_key = "sk_test_4eC39HqLyjWDarjtT1zdp7dc";
-    assert_regex_match_found(regexes::STRIPE_KEY, stripe_api_key);
-    assert_regex_match_found(regexes::STRIPE_KEY, stripe_restricted_api_key);
-    assert_regex_match_found(regexes::STRIPE_KEY, stripe_api_test_key);
-}
-
-#[test]
 fn test_github_tokens() {
     let classic_personal_token = "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";
     let fine_grained_personal_access_token = "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";
