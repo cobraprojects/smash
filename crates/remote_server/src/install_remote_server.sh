@@ -14,7 +14,7 @@
 # Placeholders (substituted at runtime by setup.rs):
 #   {download_base_url}         — e.g. https://app.warp.dev/download/cli
 #   {channel}                   — stable | preview | dev
-#   {install_dir}               — e.g. ~/.warp/remote-server
+#   {install_dir}               — e.g. ~/.smash/remote-server
 #   {binary_name}               — e.g. oz | oz-dev | oz-preview
 #   {version_query}             — e.g. &version=v0.2026... (empty when no release tag)
 #   {version_suffix}            — e.g. -v0.2026...        (empty when no release tag)

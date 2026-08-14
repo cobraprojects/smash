@@ -1,0 +1,9 @@
+---
+name: "Run Smash locally with a shell"
+command: "SMASH_SHELL_PATH={{shell}} ./script/run"
+description: "Run Smash with a specific shell without changing the login shell."
+arguments:
+  - name: shell
+    description: "Absolute path to the shell."
+author: Smash contributors
+shells: []

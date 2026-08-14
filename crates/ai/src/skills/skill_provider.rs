@@ -1,6 +1,6 @@
 //! Skill provider definitions and utilities.
 //!
-//! This module defines the supported skill providers (i.e. Agents, Claude, Codex, Warp) and their
+//! This module defines the supported skill providers (i.e. Agents, Claude, Codex, Smash) and their
 //! associated skills directory paths. It provides utilities for looking up providers
 //! from paths and vice versa.
 use std::path::{Path, PathBuf};
@@ -14,7 +14,7 @@ use warp_core::ui::icons::Icon;
 use warp_core::ui::theme::Fill;
 use warp_util::local_or_remote_path::LocalOrRemotePath;
 
-/// Represents a skill provider/origin (Agents, Claude, Codex, or Warp).
+/// Represents a skill provider/origin (Agents, Claude, Codex, or Smash).
 #[derive(
     Debug,
     Clone,
@@ -29,8 +29,11 @@ use warp_util::local_or_remote_path::LocalOrRemotePath;
     VariantNames,
 )]
 pub enum SkillProvider {
-    Warp,
+    #[serde(alias = "Warp")]
+    Smash,
     Agents,
+    /// Compatibility alias for repositories that use `.agent/skills` (singular).
+    Agent,
     Claude,
     Codex,
     Cursor,
@@ -63,7 +66,7 @@ pub enum SkillScope {
     Home,
     /// Skills from a project directory (e.g., `./repo/.agents/skills`).
     Project,
-    /// Bundled skills distributed with Warp.
+    /// Bundled skills distributed with Smash.
     Bundled,
 }
 
@@ -83,8 +86,9 @@ impl SkillProvider {
             SkillProvider::Gemini => Icon::GeminiLogo,
             SkillProvider::Droid => Icon::DroidLogo,
             SkillProvider::OpenCode => Icon::OpenCodeLogo,
-            SkillProvider::Warp
+            SkillProvider::Smash
             | SkillProvider::Agents
+            | SkillProvider::Agent
             | SkillProvider::Cursor
             | SkillProvider::Copilot
             | SkillProvider::Github
@@ -111,8 +115,12 @@ pub static SKILL_PROVIDER_DEFINITIONS: LazyLock<Vec<SkillProviderDefinition>> =
                 skills_path: PathBuf::from(".agents").join("skills"),
             },
             SkillProviderDefinition {
-                provider: SkillProvider::Warp,
-                skills_path: PathBuf::from(".warp").join("skills"),
+                provider: SkillProvider::Agent,
+                skills_path: PathBuf::from(".agent").join("skills"),
+            },
+            SkillProviderDefinition {
+                provider: SkillProvider::Smash,
+                skills_path: PathBuf::from(".smash").join("skills"),
             },
             SkillProviderDefinition {
                 provider: SkillProvider::Claude,
@@ -164,8 +172,8 @@ pub fn provider_rank(provider: SkillProvider) -> usize {
 }
 
 pub fn home_skills_path(provider: SkillProvider) -> Option<PathBuf> {
-    if provider == SkillProvider::Warp {
-        return warp_core::paths::warp_home_skills_dir();
+    if provider == SkillProvider::Smash {
+        return warp_core::paths::smash_home_skills_dir();
     }
     let definition = SKILL_PROVIDER_DEFINITIONS
         .iter()

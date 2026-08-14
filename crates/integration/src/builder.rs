@@ -44,7 +44,7 @@ impl Builder {
         let tmp_fs = PathBuf::from(cargo_target_tmpdir::get());
         let mut builder = integration::Builder::new(tmp_fs).with_timeout(TEST_TIMEOUT);
 
-        if std::env::var("WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_ok() {
+        if std::env::var("SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_ok() {
             builder = builder.with_real_display();
         }
 

@@ -231,7 +231,7 @@ fn test_read_skills_nonexistent_directory() {
 #[serial_test::serial]
 fn test_parse_skills_dirs_env_unset_returns_empty() {
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("WARP_SKILL_DIRS") };
+    unsafe { std::env::remove_var("SMASH_SKILL_DIRS") };
     let dirs = super::parse_skills_dirs_env();
     assert!(dirs.is_empty());
 }
@@ -240,29 +240,29 @@ fn test_parse_skills_dirs_env_unset_returns_empty() {
 #[serial_test::serial]
 fn test_parse_skills_dirs_env_empty_value_returns_empty() {
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("WARP_SKILL_DIRS", "") };
+    unsafe { std::env::set_var("SMASH_SKILL_DIRS", "") };
     let dirs = super::parse_skills_dirs_env();
     assert!(dirs.is_empty());
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("WARP_SKILL_DIRS") };
+    unsafe { std::env::remove_var("SMASH_SKILL_DIRS") };
 }
 
 #[test]
 #[serial_test::serial]
 fn test_parse_skills_dirs_env_single_path() {
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("WARP_SKILL_DIRS", "/foo/bar/skills") };
+    unsafe { std::env::set_var("SMASH_SKILL_DIRS", "/foo/bar/skills") };
     let dirs = super::parse_skills_dirs_env();
     assert_eq!(dirs, vec![std::path::PathBuf::from("/foo/bar/skills")]);
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("WARP_SKILL_DIRS") };
+    unsafe { std::env::remove_var("SMASH_SKILL_DIRS") };
 }
 
 #[test]
 #[serial_test::serial]
 fn test_parse_skills_dirs_env_multiple_paths() {
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("WARP_SKILL_DIRS", "/a/skills,/b/skills,/c/skills") };
+    unsafe { std::env::set_var("SMASH_SKILL_DIRS", "/a/skills,/b/skills,/c/skills") };
     let dirs = super::parse_skills_dirs_env();
     assert_eq!(
         dirs,
@@ -273,14 +273,14 @@ fn test_parse_skills_dirs_env_multiple_paths() {
         ]
     );
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("WARP_SKILL_DIRS") };
+    unsafe { std::env::remove_var("SMASH_SKILL_DIRS") };
 }
 
 #[test]
 #[serial_test::serial]
 fn test_parse_skills_dirs_env_trims_whitespace_and_drops_blanks() {
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("WARP_SKILL_DIRS", " /a/skills , , /b/skills ") };
+    unsafe { std::env::set_var("SMASH_SKILL_DIRS", " /a/skills , , /b/skills ") };
     let dirs = super::parse_skills_dirs_env();
     assert_eq!(
         dirs,
@@ -290,7 +290,7 @@ fn test_parse_skills_dirs_env_trims_whitespace_and_drops_blanks() {
         ]
     );
     // TODO: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("WARP_SKILL_DIRS") };
+    unsafe { std::env::remove_var("SMASH_SKILL_DIRS") };
 }
 
 // ============================================================================

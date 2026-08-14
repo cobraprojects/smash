@@ -8,7 +8,7 @@ fn test_data_dir_path() {
     // ChannelState, by default, is configured for Channel::Oss.
     cfg_if::cfg_if! {
         if #[cfg(target_os = "macos")] {
-            assert_eq!(data_dir(), home_dir.join(".warp-oss"));
+            assert_eq!(data_dir(), home_dir.join(".smash"));
         } else if #[cfg(any(target_os = "linux", target_os = "freebsd"))] {
             assert_eq!(data_dir(), home_dir.join(".local/share/warp-oss"));
         } else if #[cfg(windows)] {
@@ -25,7 +25,7 @@ fn test_config_local_dir_path() {
     // ChannelState, by default, is configured for Channel::Oss.
     cfg_if::cfg_if! {
         if #[cfg(target_os = "macos")] {
-            assert_eq!(config_local_dir(), home_dir.join(".warp-oss"));
+            assert_eq!(config_local_dir(), home_dir.join(".smash"));
         } else if #[cfg(any(target_os = "linux", target_os = "freebsd"))] {
             assert_eq!(config_local_dir(), home_dir.join(".config/warp-oss"));
         } else if #[cfg(windows)] {
@@ -39,21 +39,21 @@ fn test_config_local_dir_path() {
 #[cfg(target_os = "macos")]
 #[test]
 fn test_macos_config_dir_name_scopes_to_data_profile() {
-    assert_eq!(macos_config_dir_name_for(Channel::Stable, None), ".warp");
+    assert_eq!(macos_config_dir_name_for(Channel::Stable, None), ".smash");
     assert_eq!(
         macos_config_dir_name_for(Channel::Local, None),
-        ".warp-local"
+        ".smash-local"
     );
 
     // Each development profile must get its own directory so shared config
     // (notably settings.toml) cannot leak between profiles.
     assert_eq!(
         macos_config_dir_name_for(Channel::Local, Some("myprofile")),
-        ".warp-local-myprofile"
+        ".smash-local-myprofile"
     );
     assert_eq!(
         macos_config_dir_name_for(Channel::Stable, Some("myprofile")),
-        ".warp-myprofile"
+        ".smash-myprofile"
     );
 }
 
@@ -61,7 +61,7 @@ fn test_macos_config_dir_name_scopes_to_data_profile() {
 fn test_gui_app_id_maps_oss_tui_to_oss_gui() {
     let gui_app_id = gui_app_id_for_channel(Channel::Oss, AppId::new("dev", "warp", "WarpTui"));
 
-    assert_eq!(gui_app_id.to_string(), "dev.warp.WarpOss");
+    assert_eq!(gui_app_id.to_string(), "app.smash.Smash");
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn test_gui_config_and_mcp_paths_resolve_explicit_sources() {
 
     cfg_if::cfg_if! {
         if #[cfg(target_os = "macos")] {
-            assert_eq!(gui_config_dir, home_dir.join(".warp-oss"));
+            assert_eq!(gui_config_dir, home_dir.join(".smash"));
         } else if #[cfg(any(target_os = "linux", target_os = "freebsd"))] {
             assert_eq!(gui_config_dir, home_dir.join(".config/warp-oss"));
         } else if #[cfg(windows)] {
@@ -84,31 +84,34 @@ fn test_gui_config_and_mcp_paths_resolve_explicit_sources() {
         }
     }
 
-    assert_eq!(gui_mcp_config_file_path(), warp_home_mcp_config_file_path());
+    assert_eq!(
+        gui_mcp_config_file_path(),
+        smash_home_mcp_config_file_path()
+    );
 }
 #[test]
-fn test_warp_home_config_dir_path() {
+fn test_smash_home_config_dir_path() {
     let home_dir = home_dir().expect("Should be able to compute home directory");
     let expected_dir_name = match ChannelState::data_profile() {
-        Some(data_profile) => format!(".warp-oss-{data_profile}"),
-        None => ".warp-oss".to_string(),
+        Some(data_profile) => format!(".smash-{data_profile}"),
+        None => ".smash".to_string(),
     };
 
     assert_eq!(
-        warp_home_config_dir(),
+        smash_home_config_dir(),
         Some(home_dir.join(expected_dir_name))
     );
 }
 
 #[test]
-fn test_warp_home_skills_and_mcp_paths() {
-    let Some(config_dir) = warp_home_config_dir() else {
-        panic!("Should be able to compute Warp home config directory");
+fn test_smash_home_skills_and_mcp_paths() {
+    let Some(config_dir) = smash_home_config_dir() else {
+        panic!("Should be able to compute Smash home config directory");
     };
 
-    assert_eq!(warp_home_skills_dir(), Some(config_dir.join("skills")));
+    assert_eq!(smash_home_skills_dir(), Some(config_dir.join("skills")));
     assert_eq!(
-        warp_home_mcp_config_file_path(),
+        smash_home_mcp_config_file_path(),
         Some(config_dir.join(".mcp.json"))
     );
 }
@@ -120,7 +123,7 @@ fn test_tui_mcp_config_path_is_separate_from_gui() {
     assert_eq!(tui_mcp_path, tui_config_local_dir().join(".mcp.json"));
     assert_ne!(
         Some(tui_mcp_path),
-        warp_home_mcp_config_file_path(),
+        smash_home_mcp_config_file_path(),
         "GUI and TUI MCP configuration must remain isolated"
     );
 }

@@ -120,7 +120,7 @@ pub struct CreateScheduleArgs {
     ///
     /// Format: `repo:skill_name` or `org/repo:skill_name`
     ///
-    /// Skills are searched in `.agents/skills/`, `.warp/skills/`, `.claude/skills/`, and `.codex/skills/` directories.
+    /// Skills are searched in `.agents/skills/`, `.smash/skills/`, `.claude/skills/`, and `.codex/skills/` directories.
     /// The skill is resolved at runtime in the agent's cloud environment.
     ///
     /// When used with --prompt, the skill provides the base context and the prompt is the user task.
@@ -195,7 +195,7 @@ pub struct UpdateScheduleArgs {
     ///
     /// Format: `skill_name`, `repo:skill_name`, or `org/repo:skill_name`
     ///
-    /// Skills are searched in `.agents/skills/`, `.warp/skills/`, `.claude/skills/`, and `.codex/skills/` directories.
+    /// Skills are searched in `.agents/skills/`, `.smash/skills/`, `.claude/skills/`, and `.codex/skills/` directories.
     /// The skill is resolved at runtime in the agent's cloud environment.
     #[arg(long = "skill", value_name = "SKILL", conflicts_with = "remove_skill")]
     pub skill: Option<SkillSpec>,

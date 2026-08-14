@@ -773,7 +773,7 @@ fn bundled_test_skill(id: &str, description: &str) -> ParsedSkill {
         path: LocalOrRemotePath::Local(format!("/bundled/skills/{id}/SKILL.md").into()),
         content: format!("# {id}"),
         line_range: None,
-        provider: SkillProvider::Warp,
+        provider: SkillProvider::Smash,
         scope: SkillScope::Bundled,
     }
 }
@@ -860,13 +860,13 @@ fn get_skills_for_working_directory_respects_location() {
         path: LocalOrRemotePath::Remote(RemotePath::new(
             same_host_id.clone(),
             StandardizedPath::try_new(
-                "/home/user/.warp/remote-server/bundled_resources/bundled/skills/remote-bundled/SKILL.md",
+                "/home/user/.smash/remote-server/bundled_resources/bundled/skills/remote-bundled/SKILL.md",
             )
             .unwrap(),
         )),
         content: "# remote-bundled".to_string(),
         line_range: None,
-        provider: SkillProvider::Warp,
+        provider: SkillProvider::Smash,
         scope: SkillScope::Bundled,
     };
 
@@ -1538,7 +1538,7 @@ fn make_skill(name: &str, provider_dir: &str) -> ParsedSkill {
         path: path.clone(),
         content: format!("# {name}"),
         line_range: None,
-        provider: get_provider_for_path(&path).unwrap_or(SkillProvider::Warp),
+        provider: get_provider_for_path(&path).unwrap_or(SkillProvider::Smash),
         scope: SkillScope::Project,
     }
 }

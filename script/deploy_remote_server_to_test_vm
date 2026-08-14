@@ -27,7 +27,7 @@ CARGO_PROFILE="dev-remote"
 FEATURES="crash_reporting,standalone,agent_mode_debug,remote_codebase_indexing"
 WARP_BIN="integration"
 # The integration test runner uses Channel::Integration, which maps to
-# cli_command_name() = "oz-integration", remote_server_dir() = "~/.warp-dev/remote-server",
+# remote_server_dir() = "~/.smash-integration/remote-server",
 # and remote_server_binary() = "oz-integration-${pinned_version}".
 # See crates/warp_core/src/channel/mod.rs, crates/remote_server/src/setup.rs,
 # and crates/integration/src/bin/integration.rs.
@@ -37,7 +37,7 @@ WARP_BIN="integration"
 # warp-channel-config to generate local_config.json at compile time, but this CI
 # path should not depend on private channel config. The Integration-channel
 # binary embeds a static non-secret config instead.
-REMOTE_DIR=".warp-dev/remote-server"
+REMOTE_DIR=".smash-integration/remote-server"
 
 # Dedicated remote-server test VM, configured similarly to the SSH integration
 # test VM but isolated from the general SSH integration suite.

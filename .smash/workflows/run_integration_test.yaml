@@ -1,0 +1,10 @@
+---
+name: "Run a Smash integration test"
+command: "SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 cargo test --package integration --test integration -- {{test}}"
+description: "Run a specific Smash integration test."
+arguments:
+  - name: test
+    description: "The integration test to run."
+    default_value: test_simple_example
+author: Smash contributors
+shells: []

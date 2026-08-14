@@ -14,7 +14,7 @@ use warpui::{Entity, ModelContext, SingletonEntity};
 #[cfg(not(target_family = "wasm"))]
 use watcher::{BulkFilesystemWatcher, BulkFilesystemWatcherEvent};
 
-/// Duration between filesystem watch events for the Warp managed paths watcher, in milliseconds.
+/// Duration between filesystem watch events for the Smash managed paths watcher, in milliseconds.
 #[cfg(not(target_family = "wasm"))]
 const WARP_MANAGED_PATHS_WATCHER_DEBOUNCE_MILLI_SECS: u64 = 500;
 
@@ -30,7 +30,7 @@ pub(crate) fn ensure_warp_watch_roots_exist() {
     let data_dir = warp_data_dir();
     if let Err(err) = fs::create_dir_all(&data_dir) {
         log::warn!(
-            "Failed to create Warp data directory {}: {err}",
+            "Failed to create Smash data directory {}: {err}",
             data_dir.display()
         );
     }
@@ -40,7 +40,7 @@ pub(crate) fn ensure_warp_watch_roots_exist() {
         && let Err(err) = fs::create_dir_all(&config_local_dir)
     {
         log::warn!(
-            "Failed to create Warp config directory {}: {err}",
+            "Failed to create Smash config directory {}: {err}",
             config_local_dir.display()
         );
     }
@@ -53,7 +53,7 @@ pub(crate) fn ensure_warp_watch_roots_exist() {
         let tui_config_local_dir = warp_core::paths::tui_config_local_dir();
         if let Err(err) = fs::create_dir_all(&tui_config_local_dir) {
             log::warn!(
-                "Failed to create Warp TUI config directory {}: {err}",
+                "Failed to create Smash TUI config directory {}: {err}",
                 tui_config_local_dir.display()
             );
         }
@@ -61,18 +61,18 @@ pub(crate) fn ensure_warp_watch_roots_exist() {
 }
 
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
-pub(crate) fn warp_home_skills_dir() -> Option<PathBuf> {
-    warp_core::paths::warp_home_skills_dir()
+pub(crate) fn smash_home_skills_dir() -> Option<PathBuf> {
+    warp_core::paths::smash_home_skills_dir()
 }
 
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
-pub(crate) fn warp_home_mcp_config_file_path() -> Option<PathBuf> {
-    warp_core::paths::warp_home_mcp_config_file_path()
+pub(crate) fn smash_home_mcp_config_file_path() -> Option<PathBuf> {
+    warp_core::paths::smash_home_mcp_config_file_path()
 }
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
 pub(crate) fn active_mcp_config_file_path() -> Option<PathBuf> {
     match settings::settings_mode() {
-        settings::SettingsMode::Gui => warp_home_mcp_config_file_path(),
+        settings::SettingsMode::Gui => smash_home_mcp_config_file_path(),
         settings::SettingsMode::Tui => Some(warp_core::paths::tui_mcp_config_file_path()),
     }
 }
@@ -86,7 +86,7 @@ pub(crate) struct WarpMcpConfigPath {
 
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
 pub(crate) fn warp_managed_skill_dirs() -> Vec<PathBuf> {
-    warp_home_skills_dir().into_iter().collect()
+    smash_home_skills_dir().into_iter().collect()
 }
 
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
@@ -274,7 +274,7 @@ impl WarpManagedPathsWatcher {
                 data_dir.clone(),
                 WatchFilter::with_filter(filter.clone(), filter),
                 RecursiveMode::Recursive,
-                "Warp data directory",
+                "Smash data directory",
             );
             if should_register_config_local_dir {
                 Self::register_path(
@@ -283,7 +283,7 @@ impl WarpManagedPathsWatcher {
                     config_local_dir.clone(),
                     WatchFilter::accept_all(),
                     RecursiveMode::Recursive,
-                    "Warp config directory",
+                    "Smash config directory",
                 );
             }
             // Watch the TUI settings directory for that surface. On macOS it's
@@ -304,23 +304,23 @@ impl WarpManagedPathsWatcher {
                         tui_config_local_dir,
                         WatchFilter::accept_all(),
                         RecursiveMode::Recursive,
-                        "Warp TUI config directory",
+                        "Smash TUI config directory",
                     );
                 }
             }
-            if let Some(warp_home_skills_dir) = warp_home_skills_dir()
-                && warp_home_skills_dir.exists()
-                && !warp_home_skills_dir.starts_with(&data_dir)
+            if let Some(smash_home_skills_dir) = smash_home_skills_dir()
+                && smash_home_skills_dir.exists()
+                && !smash_home_skills_dir.starts_with(&data_dir)
                 && (!should_register_config_local_dir
-                    || !warp_home_skills_dir.starts_with(&config_local_dir))
+                    || !smash_home_skills_dir.starts_with(&config_local_dir))
             {
                 Self::register_path(
                     ctx,
                     &watcher,
-                    warp_home_skills_dir,
+                    smash_home_skills_dir,
                     WatchFilter::accept_all(),
                     RecursiveMode::Recursive,
-                    "Warp home skills directory",
+                    "Smash home skills directory",
                 );
             }
             let active_mcp_config_path = active_mcp_config_file_path();
@@ -353,7 +353,7 @@ impl WarpManagedPathsWatcher {
                     active_mcp_config_dir,
                     WatchFilter::with_filter(Arc::new(|_: &Path| true), emit),
                     RecursiveMode::NonRecursive,
-                    "Warp MCP config directory",
+                    "Smash MCP config directory",
                 );
             }
         }

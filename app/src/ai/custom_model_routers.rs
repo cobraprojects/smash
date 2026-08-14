@@ -2,7 +2,7 @@
 //! a concrete model per task.
 //!
 //! This module holds the portable definition for **local** (YAML-authored) custom
-//! auto models: each file under `~/.warp/custom_model_routers/` defines exactly
+//! auto models: each file under `~/.smash/custom_model_routers/` defines exactly
 //! one router (see [`parse_model_config_yaml`]), surfaced in the model picker as
 //! synthetic [`LLMInfo`] entries, and serialized inline into outbound agent
 //! requests (`Request.Settings.custom_model_routers`).

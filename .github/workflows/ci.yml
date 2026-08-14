@@ -16,7 +16,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  WARP_SKIP_COMMON_SKILLS_INSTALL: "1"
 
 jobs:
   check:

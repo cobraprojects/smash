@@ -1983,7 +1983,7 @@ define_settings_group!(AISettings, settings: [
 
 
     // Whether file-based MCP servers from third-party AI tools (e.g. Claude, Codex) should
-    // be automatically detected and spawned. Warp-native config files (.warp/.mcp.json) are
+    // be automatically detected and spawned. Smash-native config files (.smash/.mcp.json) are
     // always detected and spawned, regardless of this setting.
     file_based_mcp_enabled: FileBasedMcpEnabled {
         type: bool,

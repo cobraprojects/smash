@@ -5,7 +5,7 @@ use std::str::FromStr;
 /// A skill specifier that can reference a skill in a specific repo or search the current directory.
 ///
 /// The skill identifier (after the optional `repo:` or `org/repo:` prefix) can be either:
-/// - A **simple skill name** - searched across skill directories with precedence (`.agents/skills/`, `.warp/skills/`, `.claude/skills/`, `.codex/skills/`)
+/// - A **simple skill name** - searched across skill directories with precedence (`.agents/skills/`, `.smash/skills/`, `.claude/skills/`, `.codex/skills/`)
 /// - A **full path to SKILL.md** - resolved directly without precedence
 ///
 /// # Formats
@@ -20,7 +20,7 @@ use std::str::FromStr;
 ///
 /// Simple skill names (searched with directory precedence):
 /// ```ignore
-/// code-review                              // searches .agents/skills/, .warp/skills/, .claude/skills/, .codex/skills/
+/// code-review                              // searches .agents/skills/, .smash/skills/, .claude/skills/, .codex/skills/
 /// warp-internal:code-review                // searches in "warp-internal" repo
 /// warpdotdev/warp-internal:code-review     // searches in specific org/repo
 /// ```
@@ -39,7 +39,7 @@ pub struct SkillSpec {
     pub repo: Option<String>,
     /// The skill identifier - either a simple name or a full path to SKILL.md.
     ///
-    /// - **Simple name** (e.g., `"code-review"`): Searched across `.agents/skills/`, `.warp/skills/`, `.claude/skills/`, `.codex/skills/`
+    /// - **Simple name** (e.g., `"code-review"`): Searched across `.agents/skills/`, `.smash/skills/`, `.claude/skills/`, `.codex/skills/`
     ///   in precedence order. The name is used to construct paths like `.claude/skills/code-review/SKILL.md`.
     ///
     /// - **Full path** (e.g., `".claude/skills/code-review/SKILL.md"`): Resolved directly without precedence.
@@ -88,7 +88,7 @@ impl SkillSpec {
     /// - `deploy`
     ///
     /// Full paths are resolved directly, while simple names are searched across
-    /// skill directories in precedence order (`.agents/skills/`, `.warp/skills/`, `.claude/skills/`, `.codex/skills/`).
+    /// skill directories in precedence order (`.agents/skills/`, `.smash/skills/`, `.claude/skills/`, `.codex/skills/`).
     ///
     /// Uses cross-platform path semantics via [`std::path::Path`].
     pub fn is_full_path(&self) -> bool {

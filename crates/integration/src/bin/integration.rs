@@ -36,7 +36,7 @@ pub fn main() -> Result<()> {
                     "WarpIntegration"
                 },
             ),
-            logfile_name: "warp_integration.log".into(),
+            logfile_name: "smash_integration.log".into(),
             server_config: WarpServerConfig {
                 firebase_auth_api_key: "".into(),
                 iap_config: None,

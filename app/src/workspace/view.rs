@@ -7222,7 +7222,7 @@ impl Workspace {
         }
     }
 
-    /// Writes the default tab config template to an unused path in `~/.warp/tab_configs/`
+    /// Writes the default tab config template to an unused path in `~/.smash/tab_configs/`
     /// and opens it respecting the user's configured editor setting.
     #[cfg(feature = "local_fs")]
     fn create_and_open_new_tab_config(&mut self, ctx: &mut ViewContext<Self>) {
@@ -7261,7 +7261,7 @@ impl Workspace {
     }
 
     /// Snapshots the given tab's pane layout and writes it as a new tab config
-    /// TOML to `~/.warp/tab_configs/`, then opens the file in the user's editor.
+    /// TOML to `~/.smash/tab_configs/`, then opens the file in the user's editor.
     #[cfg(feature = "local_fs")]
     fn save_current_tab_as_new_config(&mut self, tab_index: usize, ctx: &mut ViewContext<Self>) {
         use crate::tab_configs::session_config::{tab_config_from_pane_snapshot, write_tab_config};
@@ -11147,7 +11147,7 @@ impl Workspace {
         ))
     }
 
-    /// Generates a worktree tab config TOML, writes it to `~/.warp/tab_configs/`,
+    /// Generates a worktree tab config TOML, writes it to `~/.smash/tab_configs/`,
     /// and opens the resulting config as a new tab.
     ///
     /// When `worktree_branch_name` is `None` (autogenerate), the TOML stores
@@ -11273,7 +11273,7 @@ impl Workspace {
     }
 
     /// Opens a worktree in the given repo using the default worktree tab config,
-    /// saving the materialized config to `~/.warp/tab_configs/` first.
+    /// saving the materialized config to `~/.smash/tab_configs/` first.
     /// The branch name is auto-generated.
     #[cfg(feature = "local_fs")]
     fn open_worktree_in_repo(&mut self, repo_path: String, ctx: &mut ViewContext<Self>) {

@@ -130,7 +130,7 @@ pub fn is_skill_file(path: &Path) -> bool {
 pub fn extract_skill_parent_directory(
     path: &LocalOrRemotePath,
 ) -> Result<LocalOrRemotePath, Error> {
-    let is_warp_home_skill = path
+    let is_smash_home_skill = path
         .to_local_path()
         .and_then(Path::file_name)
         .and_then(|name| name.to_str())
@@ -140,7 +140,7 @@ pub fn extract_skill_parent_directory(
             .and_then(Path::parent)
             .and_then(Path::parent)
             .is_some_and(|parent| warp_managed_skill_dirs().iter().any(|dir| parent == dir));
-    if is_warp_home_skill {
+    if is_smash_home_skill {
         return dirs::home_dir()
             .map(LocalOrRemotePath::Local)
             .ok_or_else(|| {
@@ -177,7 +177,7 @@ pub fn is_home_skill_directory(path: &Path) -> bool {
 /// E.g. ~/.agents/skills
 pub fn is_home_provider_path(path: &Path) -> bool {
     SKILL_PROVIDER_DEFINITIONS.iter().any(|provider| {
-        if provider.provider == SkillProvider::Warp {
+        if provider.provider == SkillProvider::Smash {
             return warp_managed_skill_dirs().iter().any(|dir| path == dir);
         }
         home_skills_path(provider.provider)

@@ -4,29 +4,50 @@ use warp_util::remote_path::RemotePath;
 use warp_util::standardized_path::StandardizedPath;
 
 use super::{
-    SkillProvider, SkillScope, get_provider_for_path, get_scope_for_path, home_skills_path,
-    provider_parent_directory_for_skills_root,
+    SKILL_PROVIDER_DEFINITIONS, SkillProvider, SkillScope, get_provider_for_path,
+    get_scope_for_path, home_skills_path, provider_parent_directory_for_skills_root,
 };
 
 #[test]
-fn warp_home_skills_path_uses_warp_home_path() {
+fn smash_agents_and_codex_skill_roots_are_first_class_providers() {
+    let expected = [
+        (SkillProvider::Smash, ".smash/skills"),
+        (SkillProvider::Agents, ".agents/skills"),
+        (SkillProvider::Agent, ".agent/skills"),
+        (SkillProvider::Codex, ".codex/skills"),
+    ];
+
+    for (provider, expected_path) in expected {
+        let definition = SKILL_PROVIDER_DEFINITIONS
+            .iter()
+            .find(|definition| definition.provider == provider)
+            .expect("provider must be registered for skill discovery");
+        assert_eq!(
+            definition.skills_path,
+            std::path::PathBuf::from(expected_path)
+        );
+    }
+}
+
+#[test]
+fn smash_home_skills_path_uses_smash_home_path() {
     assert_eq!(
-        home_skills_path(SkillProvider::Warp),
-        warp_core::paths::warp_home_skills_dir()
+        home_skills_path(SkillProvider::Smash),
+        warp_core::paths::smash_home_skills_dir()
     );
 }
 
 #[test]
-fn warp_home_skill_path_is_home_warp_skill() {
-    let Some(warp_home_skills_dir) = warp_core::paths::warp_home_skills_dir() else {
+fn smash_home_skill_path_is_home_smash_skill() {
+    let Some(smash_home_skills_dir) = warp_core::paths::smash_home_skills_dir() else {
         eprintln!("Skipping test: home directory not available");
         return;
     };
-    let path = warp_home_skills_dir.join("my-skill").join("SKILL.md");
+    let path = smash_home_skills_dir.join("my-skill").join("SKILL.md");
 
     assert_eq!(
         get_provider_for_path(&LocalOrRemotePath::Local(path.clone())),
-        Some(SkillProvider::Warp)
+        Some(SkillProvider::Smash)
     );
     assert_eq!(get_scope_for_path(&path), SkillScope::Home);
 }

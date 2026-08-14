@@ -121,7 +121,7 @@
       "cargo": {
         "args": ["build", "--bin=integration", "--package=warp"],
         "env": {
-          "WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS": "1"
+          "SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS": "1"
         },
         "filter": {
           "name": "integration",

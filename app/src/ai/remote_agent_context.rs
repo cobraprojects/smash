@@ -166,7 +166,7 @@ fn bundled_skill_from_protos(host_id: &HostId, skills: &[RemoteSkillProto]) -> B
             proto,
             SkillScope::Bundled,
             None,
-            |_| Some(SkillProvider::Warp),
+            |_| Some(SkillProvider::Smash),
         )?;
         let activation = match metadata.requires_mcp.as_deref() {
             None => BundledSkillActivation::Always,

@@ -220,7 +220,7 @@ fn extract_skill_parent_directory_different_providers() {
         return;
     };
     let repo = home_dir.join("repo");
-    let providers = [".warp", ".claude", ".codex", ".cursor", ".gemini"];
+    let providers = [".smash", ".claude", ".codex", ".cursor", ".gemini"];
     for provider in providers {
         let path = repo
             .join(provider)
@@ -362,7 +362,7 @@ fn is_home_provider_path_true_for_known_providers() {
     let path = home_dir.join(".agents").join("skills");
     assert!(is_home_provider_path(&path));
 
-    if let Some(path) = warp_core::paths::warp_home_skills_dir() {
+    if let Some(path) = warp_core::paths::smash_home_skills_dir() {
         assert!(is_home_provider_path(&path));
     }
 
@@ -380,17 +380,17 @@ fn is_home_provider_path_true_for_known_providers() {
 }
 
 #[test]
-fn extract_skill_parent_directory_returns_home_dir_for_warp_home_skill() {
+fn extract_skill_parent_directory_returns_home_dir_for_smash_home_skill() {
     let Some(home_dir) = dirs::home_dir() else {
         eprintln!("Skipping test: home directory not available");
         return;
     };
-    let Some(warp_home_skills_dir) = warp_core::paths::warp_home_skills_dir() else {
-        eprintln!("Skipping test: Warp home skills directory not available");
+    let Some(smash_home_skills_dir) = warp_core::paths::smash_home_skills_dir() else {
+        eprintln!("Skipping test: Smash home skills directory not available");
         return;
     };
 
-    let skill_path = warp_home_skills_dir.join("test-skill").join("SKILL.md");
+    let skill_path = smash_home_skills_dir.join("test-skill").join("SKILL.md");
     let result = extract_skill_parent_directory(&LocalOrRemotePath::Local(skill_path));
     assert_eq!(result.ok(), Some(LocalOrRemotePath::Local(home_dir)));
 }

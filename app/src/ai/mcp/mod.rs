@@ -494,7 +494,7 @@ pub enum MCPServerUpdate {
 
 pub(crate) fn home_config_file_path(provider: MCPProvider) -> Option<PathBuf> {
     match provider {
-        MCPProvider::Warp => warp_core::paths::warp_home_mcp_config_file_path(),
+        MCPProvider::Warp => warp_core::paths::smash_home_mcp_config_file_path(),
         _ => dirs::home_dir().map(|home_dir| home_dir.join(provider.home_config_path())),
     }
 }
@@ -510,7 +510,7 @@ pub enum MCPProvider {
 impl MCPProvider {
     pub fn display_name(&self) -> &str {
         match self {
-            MCPProvider::Warp => "Warp",
+            MCPProvider::Warp => "Smash",
             MCPProvider::Claude => "Claude",
             MCPProvider::Codex => "Codex",
             MCPProvider::Agents => "Other Agents",
@@ -519,7 +519,7 @@ impl MCPProvider {
 
     pub fn icon(&self) -> Icon {
         match self {
-            // Warp's own agent MCP config — use the Warp agent brand mark.
+            // Smash's own agent MCP config uses the app's agent mark.
             MCPProvider::Warp => Icon::Agent,
             MCPProvider::Claude => Icon::ClaudeLogo,
             MCPProvider::Codex => Icon::OpenAILogo,
@@ -534,7 +534,7 @@ impl MCPProvider {
     /// Returns the path of the provider's config file relative to the home directory.
     pub fn home_config_path(&self) -> &'static Path {
         match self {
-            MCPProvider::Warp => Path::new(".warp/.mcp.json"),
+            MCPProvider::Warp => Path::new(".smash/.mcp.json"),
             MCPProvider::Claude => Path::new(".claude.json"),
             MCPProvider::Codex => Path::new(".codex/config.toml"),
             MCPProvider::Agents => Path::new(".agents/.mcp.json"),
@@ -544,7 +544,7 @@ impl MCPProvider {
     /// Returns the path of the provider's config file relative to a project root.
     pub fn project_config_path(&self) -> &'static Path {
         match self {
-            MCPProvider::Warp => Path::new(".warp/.mcp.json"),
+            MCPProvider::Warp => Path::new(".smash/.mcp.json"),
             MCPProvider::Claude => Path::new(".mcp.json"),
             MCPProvider::Codex => Path::new(".codex/config.toml"),
             MCPProvider::Agents => Path::new(".agents/.mcp.json"),
@@ -568,7 +568,7 @@ pub fn mcp_provider_from_file_path(file_path: &Path) -> Option<MCPProvider> {
     }
     // Fall back to project-config suffix match, preferring the longest
     // (most-specific) suffix.
-    // This avoids `.mcp.json` shadowing `.warp/.mcp.json`, for example.
+    // This avoids `.mcp.json` shadowing `.smash/.mcp.json`, for example.
     let mut best: Option<(MCPProvider, usize)> = None;
     for provider in MCPProvider::iter() {
         let cfg = provider.project_config_path();

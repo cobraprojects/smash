@@ -968,7 +968,7 @@ impl TemplatableMCPServerManager {
 
             // For file-based MCP installations without an explicit `working_directory`,
             // default the spawn cwd to the directory the config was discovered in
-            // (repo root for project-scoped configs, ~/.warp/ or ~ for globals). This
+            // (repo root for project-scoped configs, ~/.smash/ or ~ for globals). This
             // matches user expectations for repo-relative commands in `.mcp.json`.
             // Cloud-templated installations (lookup returns None) are unaffected and
             // continue to inherit Warp's process cwd.

@@ -92,7 +92,7 @@ async_assert_eq!(
 Since many of our tests are async, I would recommend running in a loop locally before merging to avoid flakes e.g.
 ```sh
 for i in {0..100}; do
-    WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 RUST_BACKTRACE=full WARP_SHELL_PATH=/bin/bash cargo run -p integration -- test_simple_example
+    SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 RUST_BACKTRACE=full SMASH_SHELL_PATH=/bin/bash cargo run -p integration -- test_simple_example
     if [ $? -ne 0 ]; then return; fi
 done
 ```
@@ -109,14 +109,14 @@ Note that for `async_assert` to actually work, the `set_assertion` needs to **re
 ### How to run integration tests?
 To run a specific integration test you can use:
 ```
-  WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS="1" cargo run --bin integration -- test_simple_example
+  SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS="1" cargo run --bin integration -- test_simple_example
 ```
 
-The `WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS="1"` will force the new terminal window to open, which helps a lot when iterating on your integration test implementation!
+The `SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS="1"` will force the new terminal window to open, which helps a lot when iterating on your integration test implementation!
 
 ### Known issues / limitations
-* To determine (from the `TestStep`) which shell is used for the test, you can try checking `WARP_SHELL_PATH` environment variable (that works within the CI on github) or check the passwd for the user (for local runs).
-* Similarly you can run the test with a specific shell by setting the `WARP_SHELL_PATH` and then running the test. Note that if you're running with fish, you also need to pass in `--features fish_shell` until that feature flag is removed. For example: `WARP_SHELL_PATH=/usr/local/bin/fish`, then `cargo run --bin integration --features fish_shell -- test_simple_example`
+* To determine (from the `TestStep`) which shell is used for the test, you can try checking the `SMASH_SHELL_PATH` environment variable (that works within CI) or check the passwd entry for the user (for local runs).
+* Similarly, you can run the test with a specific shell by setting `SMASH_SHELL_PATH` and then running the test. If you're running with fish, you also need to pass `--features fish_shell` until that feature flag is removed. For example: `SMASH_SHELL_PATH=/usr/local/bin/fish`, then `cargo run --bin integration --features fish_shell -- test_simple_example`.
 * Bindings aren't exposed by default in integration tests, add them in the file of the original binding. Example from `editor/view.rs`:
 
 ```rust

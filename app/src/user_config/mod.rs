@@ -94,7 +94,7 @@ pub struct WarpConfig {
     tab_config_errors: Vec<TabConfigError>,
     theme_config: WarpThemeConfig,
     local_user_workflows: Vec<Workflow>,
-    /// User-defined custom model routers loaded from `~/.warp/custom_model_routers/`.
+    /// User-defined custom model routers loaded from `~/.smash/custom_model_routers/`.
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
     custom_model_routers: Vec<CustomModelRouter>,
     /// Errors for `custom_model_routers/` files that failed to parse.
@@ -217,7 +217,7 @@ pub fn tab_configs_dir() -> PathBuf {
 }
 
 /// Returns the path to the directory containing the user's custom model router
-/// configs (`~/.warp/custom_model_routers/`). Each file defines a single router.
+/// configs (`~/.smash/custom_model_routers/`). Each file defines a single router.
 #[cfg_attr(target_family = "wasm", expect(dead_code))]
 pub fn custom_model_routers_dir() -> PathBuf {
     base_dir().join("custom_model_routers")
@@ -247,7 +247,7 @@ pub fn is_tab_config_toml(path: &Path) -> bool {
         .any(|dir| path.starts_with(dir))
 }
 
-/// Ensures `~/.warp/default_tab_configs/worktree.toml` exists, creating it
+/// Ensures `~/.smash/default_tab_configs/worktree.toml` exists, creating it
 /// from the embedded template if missing. Returns the path to the file.
 #[cfg(feature = "local_fs")]
 pub(crate) fn ensure_default_worktree_config() -> PathBuf {

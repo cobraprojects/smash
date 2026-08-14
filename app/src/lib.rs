@@ -74,6 +74,8 @@ mod search_bar;
 mod server;
 mod session_management;
 mod shell_indicator;
+#[cfg(not(target_family = "wasm"))]
+mod smash_namespace_migration;
 mod suggestions;
 mod system;
 mod tab;
@@ -1226,7 +1228,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
         use warpui::platform::mac::AppExt;
 
         let activate_on_launch = !launch_mode.is_integration_test()
-            || std::env::var("WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_ok();
+            || std::env::var("SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_ok();
         app_builder.set_activate_on_launch(activate_on_launch);
 
         let dev_icon = ASSETS.get("bundled/png/local.png")?;
@@ -1481,9 +1483,10 @@ pub(crate) fn initialize_app(
         }
     }
 
-    // One-time migration: give Preview its own config directory by
-    // symlinking contents from the shared ~/.warp location. Must run
-    // before ensure_warp_watch_roots_exist() creates the new directory.
+    #[cfg(not(target_family = "wasm"))]
+    smash_namespace_migration::migrate_smash_home_if_needed();
+
+    // Must run before ensure_warp_watch_roots_exist() creates the new directory.
     #[cfg(target_os = "macos")]
     preview_config_migration::migrate_preview_config_dir_if_needed();
 

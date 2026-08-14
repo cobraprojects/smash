@@ -2,7 +2,7 @@
 //!
 //! Opened as a side-pane from the Warp Agent settings page when the user clicks
 //! "Add router" or "Edit" on an existing router card. Writes changes to
-//! `~/.warp/custom_model_routers/` via [`WarpConfig::save_custom_model_router`].
+//! `~/.smash/custom_model_routers/` via [`WarpConfig::save_custom_model_router`].
 
 use itertools::Itertools;
 use markdown_parser::{FormattedText, FormattedTextFragment, FormattedTextLine};

@@ -92,6 +92,26 @@ http://127.0.0.1:1234
 
 Discovered models from connected providers appear in the model picker and the `/model` command.
 
+## MCP servers and skills
+
+Smash can start local stdio MCP servers and connect to HTTP/SSE MCP endpoints. Put global servers
+in `~/.smash/.mcp.json`, or project-specific servers in `<project>/.smash/.mcp.json`. Smash watches
+these files and reloads saved changes without an app restart. MCP tools are available to ChatGPT,
+Ollama, and LM Studio models through the same native agent action flow.
+
+Smash discovers personal and project skills from these compatible locations, in precedence order:
+
+```text
+.agents/skills
+.agent/skills
+.smash/skills
+.claude/skills
+.codex/skills
+```
+
+Each skill lives in its own directory with a `SKILL.md` file and appears as a slash command in
+agent input. Smash also watches personal skill directories for changes.
+
 ## Build and run
 
 Smash is currently developed and tested on macOS.
@@ -100,7 +120,7 @@ For the optimized app used day to day:
 
 ```sh
 ./script/bootstrap
-WARP_SKIP_COMMON_SKILLS_INSTALL=1 ./script/run --profile rlto --dont-open
+./script/run --profile rlto --dont-open
 open target/rlto/bundle/osx/Smash.app
 ```
 
@@ -110,7 +130,7 @@ create the large incremental compilation cache used by development builds.
 For faster edit/build cycles while developing Smash, use the debug bundle instead:
 
 ```sh
-WARP_SKIP_COMMON_SKILLS_INSTALL=1 ./script/run --dont-open
+./script/run --dont-open
 open target/debug/bundle/osx/Smash.app
 ```
 

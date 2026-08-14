@@ -270,7 +270,7 @@ pub fn load_launch_configs(launch_config_path: &Path) -> Vec<LaunchConfig> {
 }
 
 /// Loads custom model routers from the config directory at `dir_path`
-/// (`~/.warp/custom_model_routers/`), where each file defines a single router.
+/// (`~/.smash/custom_model_routers/`), where each file defines a single router.
 /// Returns the parsed routers (sorted by display name) and any per-file
 /// parse/validation errors. If the directory does not exist, returns empty vecs.
 pub fn load_model_configs(dir_path: &Path) -> (Vec<CustomModelRouter>, Vec<ModelConfigError>) {

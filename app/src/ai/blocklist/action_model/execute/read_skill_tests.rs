@@ -58,7 +58,7 @@ fn bundled_skill(name: &str) -> ParsedSkill {
         path: LocalOrRemotePath::Local(PathBuf::from(format!("/bundled/skills/{name}/SKILL.md"))),
         content: format!("# {name}"),
         line_range: None,
-        provider: SkillProvider::Warp,
+        provider: SkillProvider::Smash,
         scope: SkillScope::Bundled,
     }
 }
@@ -212,7 +212,7 @@ fn remote_session_reads_remote_bundled_skill_catalog() {
             )),
             content: "remote rendered content".to_string(),
             line_range: None,
-            provider: SkillProvider::Warp,
+            provider: SkillProvider::Smash,
             scope: SkillScope::Bundled,
         };
         SkillManager::handle(&app).update(&mut app, |manager, _ctx| {

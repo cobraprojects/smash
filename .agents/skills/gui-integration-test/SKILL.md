@@ -153,7 +153,7 @@ Warp's wrapper automatically gives you:
 - generated rc files for Bash, Zsh, and Fish
 - file-backed user preferences
 - a default 2-minute hard timeout
-- real-display support if `WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS` is present
+- real-display support if `SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS` is present
 
 ### `with_setup(...)`
 
@@ -359,13 +359,13 @@ cargo nextest run --no-fail-fast --workspace test_name
 For screenshot/video or other real-display flows:
 
 ```bash
-WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 cargo run -p integration --bin integration -- test_name
+SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 cargo run -p integration --bin integration -- test_name
 ```
 
 Or with nextest:
 
 ```bash
-WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 cargo nextest run --no-fail-fast --workspace test_name
+SMASHUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS=1 cargo nextest run --no-fail-fast --workspace test_name
 ```
 
 ## Debugging and investigation
@@ -381,7 +381,7 @@ RUST_BACKTRACE=1 cargo run -p integration --bin integration -- test_name
 This is useful when running locally and you want to inspect the failed UI state:
 
 ```bash
-WARPUI_PAUSE_INTEGRATION_TEST_ON_FAILURE=1 cargo run -p integration --bin integration -- test_name
+SMASHUI_PAUSE_INTEGRATION_TEST_ON_FAILURE=1 cargo run -p integration --bin integration -- test_name
 ```
 
 ### Pause after every step
@@ -389,12 +389,12 @@ WARPUI_PAUSE_INTEGRATION_TEST_ON_FAILURE=1 cargo run -p integration --bin integr
 Useful for understanding exactly what the test is doing:
 
 ```bash
-WARPUI_PAUSE_INTEGRATION_TEST_AT_EVERY_STEP=1 cargo run -p integration --bin integration -- test_name
+SMASHUI_PAUSE_INTEGRATION_TEST_AT_EVERY_STEP=1 cargo run -p integration --bin integration -- test_name
 ```
 
 ### Video and screenshots
 
-If the task is specifically about recording a test, collecting screenshots, or validating overlay/video artifacts, also use the `gui-integration-test-video` skill (located at `.warp/skills/gui-integration-test-video/SKILL.md`).
+If the task is specifically about recording a test, collecting screenshots, or validating overlay/video artifacts, also use the `gui-integration-test-video` skill (located at `.smash/skills/gui-integration-test-video/SKILL.md`).
 
 ### Environment variable gotcha
 

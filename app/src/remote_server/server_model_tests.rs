@@ -57,7 +57,7 @@ fn test_key(repo: &str, mode: DiffMode) -> DiffModelKey {
 fn test_bundled_skill_proto(id: &str) -> RemoteSkillProto {
     RemoteSkillProto {
         path: format!(
-            "/home/user/.warp/remote-server/bundled_resources/bundled/skills/{id}/SKILL.md"
+            "/home/user/.smash/remote-server/bundled_resources/bundled/skills/{id}/SKILL.md"
         ),
         content: format!("# {id}"),
         source: Some(remote_skill_proto::Source::Bundled(BundledSkillMetadata {

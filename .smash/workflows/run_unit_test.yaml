@@ -1,0 +1,10 @@
+---
+name: "Run a Smash unit test"
+command: "cargo test --package warp --lib -- {{module_and_test}} --exact --nocapture"
+description: "Run one exact Smash unit test."
+arguments:
+  - name: module_and_test
+    description: "The test module and test name, separated by ::"
+    default_value: terminal::model::blocks::tests::test_separator
+author: Smash contributors
+shells: []

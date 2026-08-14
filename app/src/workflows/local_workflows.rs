@@ -81,7 +81,7 @@ impl LocalWorkflows {
         })
     }
 
-    /// Returns an iterator over file-based workflows loaded from the `.warp/workflows` directory in
+    /// Returns an iterator over file-based workflows loaded from the `.smash/workflows` directory in
     /// the `working_directory`.
     ///
     /// The loaded workflows vector is cached.
@@ -183,7 +183,7 @@ pub(super) fn load_project_workflows(path: &Path) -> Vec<Workflow> {
     match git2::Repository::discover(path) {
         Ok(repository) => repository.workdir().map_or(Vec::new(), |workdir| {
             load_workflows(&workflows_dir(
-                workdir.join(warp_core::paths::WARP_CONFIG_DIR),
+                workdir.join(warp_core::paths::SMASH_CONFIG_DIR),
             ))
         }),
         Err(_) => Vec::new(),

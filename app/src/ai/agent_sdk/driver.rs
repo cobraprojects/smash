@@ -2327,9 +2327,9 @@ impl AgentDriver {
         }
     }
 
-    /// Load skills from the `WARP_SKILL_DIRS` environment variable as personal (home) tier skills.
+    /// Load skills from the `SMASH_SKILL_DIRS` environment variable as personal (home) tier skills.
     ///
-    /// `WARP_SKILL_DIRS` is a comma-separated list of paths; each entry is itself a skills directory
+    /// `SMASH_SKILL_DIRS` is a comma-separated list of paths; each entry is itself a skills directory
     /// whose **direct children** are expected to be skill folders containing `SKILL.md`. Relative
     /// entries are resolved against the driver's working directory — not the process's current
     /// working directory, which environment preparation may have changed (e.g. by cd-ing into a
@@ -2344,7 +2344,7 @@ impl AgentDriver {
             return;
         }
         log::info!(
-            "WARP_SKILL_DIRS: loading skills from {} directories",
+            "SMASH_SKILL_DIRS: loading skills from {} directories",
             dirs.len()
         );
         let load_result = foreground
@@ -2352,9 +2352,9 @@ impl AgentDriver {
                 let dirs = resolve_skills_dirs(&me.working_dir, dirs);
                 let skills = read_skills_for_skills_dirs(&dirs);
                 if skills.is_empty() {
-                    log::info!("WARP_SKILL_DIRS: no skills found");
+                    log::info!("SMASH_SKILL_DIRS: no skills found");
                 } else {
-                    log::info!("WARP_SKILL_DIRS: loaded {} skill(s)", skills.len());
+                    log::info!("SMASH_SKILL_DIRS: loaded {} skill(s)", skills.len());
                 }
                 SkillManager::handle(ctx).update(ctx, |manager, _| {
                     manager.add_skills_dirs_skills(skills);
@@ -2362,7 +2362,7 @@ impl AgentDriver {
             })
             .await;
         if let Err(err) = load_result {
-            log::warn!("Failed to load WARP_SKILL_DIRS skills: {err}");
+            log::warn!("Failed to load SMASH_SKILL_DIRS skills: {err}");
         }
     }
 

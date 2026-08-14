@@ -218,7 +218,7 @@ fn read_skill_display_text_no_double_slash_when_skill_not_found_with_path_refere
     // which for a path reference is an absolute path starting with '/'.  The display
     // text must NOT prepend an extra '/' — doing so would produce '//home/…'.
     let path = LocalOrRemotePath::Local(std::path::PathBuf::from(
-        "/home/devbox/.warp-local/skills/hello-world/SKILL.md",
+        "/home/devbox/.smash-local/skills/hello-world/SKILL.md",
     ));
     let reference = SkillReference::Path(path);
     let display = read_skill_display_text(None, &reference);

@@ -333,7 +333,7 @@ pub struct BlocklistAIController {
     ambient_agent_task_id: Option<AmbientAgentTaskId>,
 
     /// Per-session directory for downloading file attachments.
-    /// Set by the agent driver based on the workspace directory (e.g. `{working_dir}/.warp/attachments`).
+    /// Set by the agent driver based on the workspace directory (e.g. `{working_dir}/.smash/attachments`).
     attachments_download_dir: Option<std::path::PathBuf>,
 
     /// Pending auto-resume tasks that are waiting for network connectivity.

@@ -30,13 +30,13 @@ static ENV_VAR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\$\{([^}]+)\}").expect("Regex is valid"));
 
 /// Matches home config paths that are exactly one directory deep (e.g. `.codex/config.toml`,
-/// `.warp/.mcp.json`), capturing the parent directory component.
+/// `.smash/.mcp.json`), capturing the parent directory component.
 static HOME_SUBDIR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^([^/]+)/[^/]+$").expect("Regex is valid"));
 
 /// Returns the subdirectory under the home directory that needs its own [`DirectoryWatcher`],
 /// inferred from the provider's home config path. Matches paths that are exactly one directory
-/// deep (e.g. `.codex/config.toml` → `.codex`, `.warp/.mcp.json` → `.warp`). Returns `None`
+/// deep (e.g. `.codex/config.toml` → `.codex`, `.smash/.mcp.json` → `.smash`). Returns `None`
 /// when the config file lives directly in the home dir (e.g. `.claude.json`) and is already
 /// covered by `HomeDirectoryWatcher`.
 fn home_subdir_to_watch(provider: MCPProvider) -> Option<PathBuf> {

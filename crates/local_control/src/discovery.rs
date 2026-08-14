@@ -285,7 +285,7 @@ pub fn discovery_dir() -> PathBuf {
         return PathBuf::from(path).join("warp").join("local-control");
     }
     let home = std::env::var_os("HOME").unwrap_or_else(|| ".".into());
-    PathBuf::from(home).join(".warp").join("local-control")
+    PathBuf::from(home).join(".smash").join("local-control")
 }
 
 /// Returns compatible live instances from `channel` that pass an authenticated app ping.
