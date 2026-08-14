@@ -96,8 +96,20 @@ Discovered models from connected providers appear in the model picker and the `/
 
 Smash is currently developed and tested on macOS.
 
+For the optimized app used day to day:
+
 ```sh
 ./script/bootstrap
+WARP_SKIP_COMMON_SKILLS_INSTALL=1 ./script/run --profile rlto --dont-open
+open target/rlto/bundle/osx/Smash.app
+```
+
+The `rlto` profile enables release optimizations and ThinLTO, avoids debug assertions, and does not
+create the large incremental compilation cache used by development builds.
+
+For faster edit/build cycles while developing Smash, use the debug bundle instead:
+
+```sh
 WARP_SKIP_COMMON_SKILLS_INSTALL=1 ./script/run --dont-open
 open target/debug/bundle/osx/Smash.app
 ```
