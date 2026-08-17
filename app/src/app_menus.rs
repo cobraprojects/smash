@@ -96,7 +96,7 @@ pub fn dock_menu() -> Menu {
                 ctx.dispatch_global_action("workspace:save_app", &());
             },
             no_updates,
-            Some(Keystroke::parse("cmd-n").expect("Valid keystroke")),
+            Some(Keystroke::parse("cmd-shift-N").expect("Valid keystroke")),
         ))],
     )
 }
@@ -1002,7 +1002,7 @@ fn make_new_elements_menu_items(ctx: &AppContext) -> Vec<MenuItem> {
             "New Window",
             open_new_window,
             no_updates,
-            Some(Keystroke::parse("cmd-n").expect("Valid keystroke")),
+            Some(Keystroke::parse("cmd-shift-N").expect("Valid keystroke")),
         )),
         MenuItem::Custom(CustomMenuItem::new(
             "New Terminal Tab",

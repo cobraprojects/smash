@@ -3632,19 +3632,47 @@ fn test_unified_new_session_menu_uses_new_worktree_config_label_and_order() {
 
             assert!(!labels.iter().any(|label| label == "Worktree in"));
 
-            let separator_index = labels
+            let worktree_index = labels
                 .iter()
-                .position(|label| label == "---")
-                .expect("expected a separator in the new-session menu");
+                .position(|label| label == "New worktree config")
+                .expect("expected New worktree config in the new-session menu");
 
+            assert_eq!(labels.get(worktree_index - 1), Some(&"---".to_string()));
             assert_eq!(
-                labels.get(separator_index + 1),
-                Some(&"New worktree config".to_string())
-            );
-            assert_eq!(
-                labels.get(separator_index + 2),
+                labels.get(worktree_index + 1),
                 Some(&"New tab config".to_string())
             );
+        });
+    });
+}
+
+#[test]
+fn test_unified_new_session_menu_starts_with_new_session() {
+    let _grouped_tabs_guard = FeatureFlag::GroupedTabs.override_enabled(true);
+
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            let labels = workspace
+                .unified_new_session_menu_items(ctx)
+                .iter()
+                .map(new_session_menu_label)
+                .collect::<Vec<_>>();
+
+            assert_eq!(labels.first(), Some(&"New session".to_string()));
+            assert_eq!(labels.get(1), Some(&"---".to_string()));
+
+            let shortcut = crate::util::bindings::keybinding_name_to_display_string(
+                "workspace:new_tab_group",
+                ctx,
+            );
+            if warpui::platform::OperatingSystem::get().is_mac() {
+                assert_eq!(shortcut.as_deref(), Some("⌘N"));
+            } else {
+                assert_eq!(shortcut, None);
+            }
         });
     });
 }

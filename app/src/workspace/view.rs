@@ -6810,8 +6810,21 @@ impl Workspace {
         let effective_default = ai_settings.default_session_mode(ctx);
         let default_tab_config_path = ai_settings.default_tab_config_path().to_string();
         let shortcut_label = keybinding_name_to_display_string(NEW_TAB_BINDING_NAME, ctx);
+        let new_session_shortcut_label =
+            keybinding_name_to_display_string("workspace:new_tab_group", ctx);
         let reopen_closed_session_shortcut_label =
             keybinding_name_to_display_string("app:reopen_closed_session", ctx);
+
+        if FeatureFlag::GroupedTabs.is_enabled() {
+            let new_session_item = MenuItemFields::new("New session")
+                .with_on_select_action(WorkspaceAction::SelectNewSessionMenuItem(
+                    NewSessionMenuItem::CreateNewTabGroup,
+                ))
+                .with_icon(icons::Icon::LayersThree01)
+                .with_key_shortcut_label(new_session_shortcut_label);
+            menu_items.push(new_session_item.into_item());
+            menu_items.push(MenuItem::Separator);
+        }
 
         // 1. Agent (if AI enabled)
         if is_any_ai_enabled {
@@ -6969,24 +6982,6 @@ impl Workspace {
                     ))
                     .with_icon(icons::Icon::Plus)
                     .into_item(),
-            );
-        }
-
-        // 7. Separator + New tab group entry. Gated on the Grouped Tabs flag.
-        // TODO(johnturcoo) add group actions.
-        if FeatureFlag::GroupedTabs.is_enabled() {
-            menu_items.push(MenuItem::Separator);
-            menu_items.push(
-                MenuItemFields::new(if ChannelState::channel() == Channel::Oss {
-                    "New session"
-                } else {
-                    "New tab group"
-                })
-                .with_on_select_action(WorkspaceAction::SelectNewSessionMenuItem(
-                    NewSessionMenuItem::CreateNewTabGroup,
-                ))
-                .with_icon(icons::Icon::LayersThree01)
-                .into_item(),
             );
         }
 

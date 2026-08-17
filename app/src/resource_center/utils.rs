@@ -121,7 +121,7 @@ pub fn get_additional_keybindings() -> Vec<CommandBinding> {
         CommandBinding::new(
             "workspace:new_window".into(),
             "Open New Window".into(),
-            Some(Keystroke::parse("cmd-n").expect("Valid keystroke")),
+            Some(Keystroke::parse("cmd-shift-N").expect("Valid keystroke")),
         ),
         CommandBinding::new(
             "workspace:hide_warp".into(),

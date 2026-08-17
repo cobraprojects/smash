@@ -989,17 +989,17 @@ pub fn init(app: &mut AppContext) {
     .with_group(bindings::BindingGroup::Settings.as_str())
     .with_context_predicate(id!("Workspace"))]);
 
-    // Tab grouping bindings (keyless by default; gated on `GroupedTabs`).
+    // Session and tab grouping bindings, gated on `GroupedTabs`.
     app.register_editable_bindings([
         EditableBinding::new(
             "workspace:new_tab_group",
-            "Create new tab group",
-            // Reuse the new-session dropdown's action, not a dedicated variant.
+            "Create new session",
             WorkspaceAction::SelectNewSessionMenuItem(NewSessionMenuItem::CreateNewTabGroup),
         )
         .with_enabled(|| FeatureFlag::GroupedTabs.is_enabled())
         .with_group(bindings::BindingGroup::Navigation.as_str())
-        .with_context_predicate(id!("Workspace") & !id!("Workspace_PaneDragging")),
+        .with_context_predicate(id!("Workspace") & !id!("Workspace_PaneDragging"))
+        .with_mac_key_binding("cmd-n"),
         EditableBinding::new(
             "workspace:new_tab_group_from_active_or_selected_tabs",
             "Create tab group from active or selected tab(s)",

@@ -391,7 +391,7 @@ pub fn custom_tag_to_keystroke(custom: CustomTag) -> Option<Keystroke> {
         }
 
         // This is one of the app's hardcoded keybindings.
-        CustomAction::AddWindow => Keystroke::parse(cmd_or_ctrl_shift("n")).ok(),
+        CustomAction::AddWindow => Keystroke::parse("cmdorctrl-shift-N").ok(),
         CustomAction::ToggleWarpDrive => {
             if OperatingSystem::get().is_mac() {
                 Keystroke::parse("cmd-\\").ok()
