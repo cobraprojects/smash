@@ -417,3 +417,21 @@ fn installed_version_returns_none_when_file_missing() {
     let dir = tempfile::tempdir().unwrap();
     assert_eq!(installed_version(dir.path()), None);
 }
+
+#[test]
+fn plugin_notifications_use_smash_branding() {
+    let manager = ClaudeCodePluginManager::new(None, None, None);
+
+    assert_eq!(
+        manager.install_success_message(),
+        "Smash plugin installed. Please run /reload-plugins to activate."
+    );
+    assert_eq!(
+        manager.update_success_message(),
+        "Smash plugin updated. Please run /reload-plugins to activate."
+    );
+    assert_eq!(
+        manager.install_instructions().title,
+        "Install Smash Plugin for Claude Code"
+    );
+}
