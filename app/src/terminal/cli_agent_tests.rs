@@ -299,6 +299,25 @@ fn test_detect_with_arguments() {
 }
 
 #[test]
+fn test_detect_claudex_as_claude() {
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            for command in [
+                "claudex",
+                "claudex --model claude-gpt-5.6-sol",
+                "/Users/example/.local/bin/claudex --continue",
+            ] {
+                assert_eq!(
+                    CLIAgent::detect(command, None, None, ctx),
+                    Some(CLIAgent::Claude),
+                    "failed to detect {command} as Claude Code",
+                );
+            }
+        });
+    });
+}
+
+#[test]
 fn test_detect_vibe_acp_binary() {
     // The mistral-vibe package ships a `vibe-acp` ACP-mode binary alongside
     // the user-facing `vibe` TUI. Both must be detected as the same agent.

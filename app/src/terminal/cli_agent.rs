@@ -163,7 +163,10 @@ impl CLIAgent {
     /// Command prefixes that identify this CLI agent.
     pub(crate) fn command_prefixes(&self) -> &'static [&'static str] {
         match self {
-            CLIAgent::Claude => &["claude"],
+            // Claudex is a local launcher that execs Claude Code with a custom
+            // provider endpoint. Treat it as Claude so the rich CLI-agent UI,
+            // notifications, and plugin integration remain available.
+            CLIAgent::Claude => &["claude", "claudex"],
             CLIAgent::Gemini => &["gemini"],
             CLIAgent::Codex => &["codex"],
             CLIAgent::Amp => &["amp"],
