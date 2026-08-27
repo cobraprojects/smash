@@ -162,7 +162,7 @@ pub enum AgentViewVisibility {
         pending_conversation_ids: HashSet<AIConversationId>,
         /// Conversation IDs where this block was attached as context.
         conversation_ids: HashSet<AIConversationId>,
-        /// Conversations that still display the block after its pending attachment was removed.
+        /// Conversations that display the block without a pending or sent attachment.
         /// These IDs control visibility only; they must not contribute model context.
         #[serde(default, skip_serializing_if = "HashSet::is_empty")]
         retained_conversation_ids: HashSet<AIConversationId>,
@@ -1122,6 +1122,17 @@ impl Block {
 
     pub fn agent_view_visibility(&self) -> &AgentViewVisibility {
         &self.agent_view_visibility
+    }
+
+    /// Keeps a terminal-origin block visible without adding it to model context.
+    pub(super) fn retain_terminal_visibility(&mut self, conversation_id: AIConversationId) -> bool {
+        match &mut self.agent_view_visibility {
+            AgentViewVisibility::Terminal {
+                retained_conversation_ids,
+                ..
+            } => retained_conversation_ids.insert(conversation_id),
+            AgentViewVisibility::Agent { .. } => false,
+        }
     }
 
     /// Returns whether NLD was overridden (input type was manually locked) when this block's

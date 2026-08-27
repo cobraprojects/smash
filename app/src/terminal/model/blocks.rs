@@ -1793,6 +1793,22 @@ impl BlockList {
 
     pub fn refresh_block_heights_for_passive_code_diff(&mut self) {}
 
+    /// Preserves the source terminal transcript when starting a conversation, without attaching it.
+    pub fn retain_terminal_blocks_for_conversation(
+        &mut self,
+        conversation_id: AIConversationId,
+    ) -> Vec<(BlockId, AgentViewVisibility)> {
+        self.blocks
+            .iter_mut()
+            .filter(|block| block.finished() && block.is_visible(&TranscriptScope::Terminal))
+            .filter_map(|block| {
+                block
+                    .retain_terminal_visibility(conversation_id)
+                    .then(|| (block.id().clone(), block.agent_view_visibility().clone()))
+            })
+            .collect()
+    }
+
     /// Associates the given blocks with a conversation, making them visible in that conversation's agent view.
     /// Returns a Vec of (block_id, visibility) for blocks that were found.
     pub fn associate_blocks_with_conversation<'a>(

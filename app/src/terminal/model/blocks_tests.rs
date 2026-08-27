@@ -1862,6 +1862,50 @@ fn test_agent_origin_block_can_be_attached_to_other_conversation() {
     assert!(user_block.is_empty(block_list.transcript_scope()));
 }
 #[test]
+fn smash_retaining_terminal_transcript_excludes_hidden_and_agent_blocks() {
+    let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
+    let mut block_list =
+        new_bootstrapped_block_list(None, None, ChannelEventListener::new_for_test());
+    let first = insert_block(&mut block_list, "first-command", "first-output");
+    let first_id = block_list.block_at(first).unwrap().id().clone();
+    let second = insert_block(&mut block_list, "second-command", "second-output");
+    let second_id = block_list.block_at(second).unwrap().id().clone();
+    let hidden = insert_block(&mut block_list, "hidden-command", "hidden-output");
+    let hidden_id = block_list.block_at(hidden).unwrap().id().clone();
+    block_list.mut_block_from_id(&hidden_id).unwrap().hide();
+    block_list.enter_conversation_context(AIConversationId::new(), false, false);
+    let agent = insert_block(&mut block_list, "agent-command", "agent-output");
+    let agent_id = block_list.block_at(agent).unwrap().id().clone();
+    block_list.exit_conversation_context();
+
+    let conversation_id = AIConversationId::new();
+    let retained = block_list.retain_terminal_blocks_for_conversation(conversation_id);
+    assert_eq!(retained.len(), 2);
+    block_list.enter_conversation_context(conversation_id, false, false);
+    for id in [&first_id, &second_id] {
+        assert!(
+            block_list
+                .block_with_id(id)
+                .unwrap()
+                .is_visible(block_list.transcript_scope())
+        );
+    }
+    for id in [&hidden_id, &agent_id] {
+        assert!(
+            !block_list
+                .block_with_id(id)
+                .unwrap()
+                .is_visible(block_list.transcript_scope())
+        );
+    }
+    assert!(
+        block_list
+            .promote_blocks_to_attached_from_conversation(conversation_id)
+            .is_empty()
+    );
+}
+
+#[test]
 fn smash_detached_blocks_remain_visible_without_becoming_sent_context() {
     let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
     for agent_origin in [false, true] {

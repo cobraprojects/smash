@@ -848,6 +848,14 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             agent_view_visibility,
         } => update_block_agent_view_visibility(connection, &block_id, &agent_view_visibility)
             .context("error updating block agent view visibility"),
+        ModelEvent::UpdateBlocksAgentViewVisibility { blocks } => connection
+            .transaction::<(), anyhow::Error, _>(|connection| {
+                for (block_id, visibility) in blocks {
+                    update_block_agent_view_visibility(connection, &block_id, &visibility)?;
+                }
+                Ok(())
+            })
+            .context("error updating terminal transcript visibility"),
         ModelEvent::SaveAIDocumentContent {
             document_id,
             content,

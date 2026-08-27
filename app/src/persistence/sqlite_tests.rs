@@ -6,6 +6,7 @@ use ai::workspace::WorkspaceMetadata;
 use chrono::{Local, Utc};
 use cloud_object_persistence::to_cloud_object_permissions;
 use diesel::connection::SimpleConnection;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::Vector2F;
 use warp_core::features::FeatureFlag;
@@ -14,9 +15,10 @@ use warp_graphql::scalars::time::ServerTimestamp;
 use super::{
     app_database_file_path, database_file_name_for_app_id, database_file_path_for_current_scope,
     database_file_path_for_scope, decode_path, deduplicate_events, encode_path,
-    get_all_codebase_index_metadata, read_sqlite_data, save_app_state,
-    save_codebase_index_metadata, setup_database, start_writer,
+    get_all_codebase_index_metadata, handle_model_event, read_sqlite_data, save_app_state,
+    save_block, save_codebase_index_metadata, setup_database, start_writer,
 };
+use crate::ai::agent::conversation::AIConversationId;
 use crate::app_state::{
     AppState, CodePaneSnapShot, CodePaneTabSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot,
     TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
@@ -26,17 +28,56 @@ use crate::cloud_object::{CloudObjectPermissions, Owner};
 use crate::code::editor_management::CodeSource;
 use crate::notebooks::{CloudNotebook, CloudNotebookModel};
 use crate::persistence::model::ObjectPermissions;
+use crate::persistence::schema::blocks::dsl as block_rows;
 use crate::persistence::{
     BlockCompleted, ModelEvent, PersistedDataScope, PersistenceScope, StartedCommandMetadata,
 };
 use crate::server::ids::{ClientId, ServerId};
 use crate::tab::SelectedTabColor;
 use crate::terminal::ShellLaunchData;
-use crate::terminal::model::block::SerializedBlock;
+use crate::terminal::model::BlockId;
+use crate::terminal::model::block::{SerializedAgentViewVisibility, SerializedBlock};
 use crate::terminal::model::session::SessionId;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::workspace::tab_group::TabGroupId;
 use crate::workspaces::user_profiles::UserProfileWithUID;
+
+#[test]
+fn smash_batch_persists_terminal_transcript_visibility() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let mut conn = setup_database(&tempdir.path().join("smash.sqlite")).unwrap();
+    let pane_id = uuid::Uuid::new_v4().as_bytes().to_vec();
+    let conversation_id = AIConversationId::new();
+    let visibility = SerializedAgentViewVisibility::Terminal {
+        pending_conversation_ids: Default::default(),
+        conversation_ids: Default::default(),
+        retained_conversation_ids: [conversation_id].into(),
+    };
+    let mut updates = Vec::new();
+    for command in ["first", "second"] {
+        let mut block =
+            SerializedBlock::new_for_test(command.as_bytes().to_vec(), b"output".to_vec());
+        block.id = BlockId::new();
+        save_block(&mut conn, pane_id.clone(), &block, true).unwrap();
+        updates.push((block.id.to_string(), visibility.clone()));
+    }
+    handle_model_event(
+        ModelEvent::UpdateBlocksAgentViewVisibility {
+            blocks: updates.clone(),
+        },
+        &mut conn,
+    )
+    .unwrap();
+    for (id, expected) in updates {
+        let saved: Option<String> = block_rows::blocks
+            .filter(block_rows::block_id.eq(id))
+            .select(block_rows::agent_view_visibility)
+            .first(&mut conn)
+            .unwrap();
+        let actual: SerializedAgentViewVisibility = serde_json::from_str(&saved.unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+}
 
 #[test]
 fn smash_uses_smash_database_filename() {

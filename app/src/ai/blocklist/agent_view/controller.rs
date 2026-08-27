@@ -14,6 +14,8 @@ use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::orchestration_topology::{
     OrchestrationNavigationDirection, adjacent_orchestration_child_conversation_id,
 };
+use crate::global_resource_handles::GlobalResourceHandlesProvider;
+use crate::persistence::ModelEvent;
 use crate::terminal::TerminalModel;
 use crate::terminal::input::message_bar::{Message, MessageItem};
 use crate::terminal::input::slash_commands::SlashCommandTrigger;
@@ -836,10 +838,34 @@ impl AgentViewController {
             AgentViewEntryOrigin::CloudAgent | AgentViewEntryOrigin::ThirdPartyCloudAgent
         );
 
-        self.terminal_model
-            .lock()
-            .block_list_mut()
-            .enter_conversation_context(conversation_id, display_mode.is_inline(), is_cloud);
+        let retained_blocks = {
+            let mut model = self.terminal_model.lock();
+            let blocks = model.block_list_mut();
+            // Starting a fresh conversation clears model context, not terminal scrollback.
+            let retained_blocks =
+                if exchange_count == 0 && display_mode.is_fullscreen() && !is_cloud {
+                    blocks.retain_terminal_blocks_for_conversation(conversation_id)
+                } else {
+                    Vec::new()
+                };
+            blocks.enter_conversation_context(conversation_id, display_mode.is_inline(), is_cloud);
+            retained_blocks
+        };
+        if !retained_blocks.is_empty()
+            && let Some(sender) = GlobalResourceHandlesProvider::as_ref(ctx)
+                .get()
+                .model_event_sender
+                .as_ref()
+        {
+            let blocks = retained_blocks
+                .into_iter()
+                .map(|(id, visibility)| (id.to_string(), visibility.into()))
+                .collect();
+            if let Err(error) = sender.send(ModelEvent::UpdateBlocksAgentViewVisibility { blocks })
+            {
+                log::warn!("Error persisting terminal transcript visibility: {error:#}");
+            }
+        }
 
         ctx.emit(AgentViewControllerEvent::EnteredAgentView {
             conversation_id,

@@ -497,6 +497,9 @@ pub enum ModelEvent {
         block_id: String,
         agent_view_visibility: SerializedAgentViewVisibility,
     },
+    UpdateBlocksAgentViewVisibility {
+        blocks: Vec<(String, SerializedAgentViewVisibility)>,
+    },
     SaveAIDocumentContent {
         document_id: String,
         content: String,
