@@ -2341,6 +2341,7 @@ fn shared_third_party_viewer_sync_enters_agent_view_and_retags_existing_block() 
                 AgentViewVisibility::Terminal {
                     conversation_ids,
                     pending_conversation_ids,
+                    ..
                 } => {
                     assert!(pending_conversation_ids.is_empty());
                     assert!(conversation_ids.contains(&conversation_id));
@@ -2411,6 +2412,7 @@ fn shared_third_party_viewer_syncs_from_viewer_harness_updated_when_harness_unch
                 AgentViewVisibility::Terminal {
                     conversation_ids,
                     pending_conversation_ids,
+                    ..
                 } => {
                     assert!(pending_conversation_ids.is_empty());
                     assert!(conversation_ids.contains(&conversation_id));
@@ -2482,6 +2484,7 @@ fn shared_third_party_viewer_syncs_from_cli_agent_state_without_ambient_model() 
                 AgentViewVisibility::Terminal {
                     conversation_ids,
                     pending_conversation_ids,
+                    ..
                 } => {
                     assert!(pending_conversation_ids.is_empty());
                     assert!(conversation_ids.contains(&conversation_id));

@@ -1678,10 +1678,12 @@ fn test_deserialize_legacy_agent_view_visibility_agent_variant() {
             origin_conversation_id: parsed_origin_conversation_id,
             pending_other_conversation_ids,
             other_conversation_ids,
+            retained_conversation_ids,
         } => {
             assert_eq!(parsed_origin_conversation_id, origin_conversation_id);
             assert!(pending_other_conversation_ids.is_empty());
             assert!(other_conversation_ids.is_empty());
+            assert!(retained_conversation_ids.is_empty());
         }
         _ => panic!("Expected agent visibility"),
     }

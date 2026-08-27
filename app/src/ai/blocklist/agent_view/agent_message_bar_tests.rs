@@ -49,7 +49,20 @@ fn smash_paperclip_shows_manual_attachment_and_keeps_output_in_context() {
         let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
 
         let block_id = terminal.update(&mut app, |view, ctx| {
-            let conversation_id = view.agent_view_controller().update(ctx, |controller, ctx| {
+            // The source command ran in the terminal, before entering the agent view.
+            let (block_index, block_id) = {
+                let mut model = view.model.lock();
+                model.simulate_block("printf attachment-check", "SMASH_PAPERCLIP_OUTPUT_827");
+                let block = model
+                    .block_list()
+                    .blocks()
+                    .iter()
+                    .find(|block| block.command_to_string() == "printf attachment-check")
+                    .unwrap();
+                (block.index(), block.id().clone())
+            };
+            view.handle_action(&TerminalAction::AskAIAssistant { block_index }, ctx);
+            view.agent_view_controller().update(ctx, |controller, ctx| {
                 controller
                     .try_enter_agent_view(
                         None,
@@ -60,23 +73,6 @@ fn smash_paperclip_shows_manual_attachment_and_keeps_output_in_context() {
                     )
                     .unwrap()
             });
-            let (block_index, block_id) = {
-                let mut model = view.model.lock();
-                model.simulate_block("printf attachment-check", "SMASH_PAPERCLIP_OUTPUT_827");
-                let block = model
-                    .block_list()
-                    .blocks()
-                    .iter()
-                    .find(|block| block.command_to_string() == "printf attachment-check")
-                    .unwrap();
-                let result = (block.index(), block.id().clone());
-                model.block_list_mut().associate_blocks_with_conversation(
-                    std::iter::once(&result.1),
-                    conversation_id,
-                );
-                result
-            };
-            view.handle_action(&TerminalAction::AskAIAssistant { block_index }, ctx);
             block_id
         });
 
@@ -112,7 +108,28 @@ fn smash_paperclip_shows_manual_attachment_and_keeps_output_in_context() {
                 .update(ctx, |input, ctx| input.clear_attached_context(ctx));
         });
         bar.read(&app, |bar, ctx| {
+            let context = bar
+                .context_model
+                .as_ref(ctx)
+                .pending_context(ctx, true, None);
+            assert!(
+                context.iter().all(|item| !matches!(item,
+                    AIAgentContext::Block(block) if block.id == block_id
+                )),
+                "detached blocks must not be sent with the next prompt"
+            );
             let model = bar.terminal_model.lock();
+            let block = model.block_list().block_with_id(&block_id).unwrap();
+            assert!(
+                block.is_visible(model.block_list().transcript_scope()),
+                "detaching context must leave the source command and output visible"
+            );
+            assert_eq!(block.command_to_string(), "printf attachment-check");
+            assert!(
+                block
+                    .output_to_string()
+                    .contains("SMASH_PAPERCLIP_OUTPUT_827")
+            );
             assert!(
                 AttachedBlocksMessageProducer
                     .produce_message(AttachmentArgs {

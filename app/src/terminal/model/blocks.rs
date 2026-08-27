@@ -1841,9 +1841,9 @@ impl BlockList {
         self.update_blocks_and_sumtree(None, None, |_| {}, |_| {});
     }
 
-    /// Removes the conversation association from the given blocks, making them disappear from that conversation's agent view.
+    /// Removes pending attachments while keeping their source blocks visible in the conversation.
     /// Returns a Vec of (block_id, visibility) for blocks that were modified.
-    pub fn remove_pending_context_assocation_for_blocks<'a>(
+    pub fn detach_context_blocks_from_conversation<'a>(
         &mut self,
         block_ids: impl Iterator<Item = &'a BlockId>,
         conversation_id: AIConversationId,
@@ -1851,7 +1851,7 @@ impl BlockList {
         let mut modified_blocks = Vec::new();
         for block_id in block_ids {
             if let Some(block) = self.mut_block_from_id(block_id)
-                && block.remove_pending_conversation_id(conversation_id)
+                && block.detach_from_conversation(conversation_id)
             {
                 modified_blocks.push((block_id.clone(), block.agent_view_visibility().clone()));
             }

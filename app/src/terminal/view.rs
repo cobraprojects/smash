@@ -5904,17 +5904,17 @@ impl TerminalView {
                         }
                     }
 
-                    // Dissociate removed blocks from the conversation
+                    // Detach context without hiding the command/output from the conversation.
                     let removed_block_ids = previous_block_ids
                         .difference(pending_context_block_ids)
                         .collect_vec();
 
                     if !removed_block_ids.is_empty() {
-                        let dissociated_blocks = self
+                        let detached_blocks = self
                             .model
                             .lock()
                             .block_list_mut()
-                            .remove_pending_context_assocation_for_blocks(
+                            .detach_context_blocks_from_conversation(
                                 removed_block_ids.into_iter(),
                                 conversation_id,
                             );
@@ -5924,7 +5924,7 @@ impl TerminalView {
                             .model_event_sender
                             .as_ref()
                         {
-                            for (block_id, agent_view_visibility) in dissociated_blocks {
+                            for (block_id, agent_view_visibility) in detached_blocks {
                                 if let Err(e) = sender.send(
                                     persistence::ModelEvent::UpdateBlockAgentViewVisibility {
                                         block_id: block_id.to_string(),

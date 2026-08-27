@@ -162,6 +162,10 @@ pub enum AgentViewVisibility {
         pending_conversation_ids: HashSet<AIConversationId>,
         /// Conversation IDs where this block was attached as context.
         conversation_ids: HashSet<AIConversationId>,
+        /// Conversations that still display the block after its pending attachment was removed.
+        /// These IDs control visibility only; they must not contribute model context.
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        retained_conversation_ids: HashSet<AIConversationId>,
     },
     /// Block was created inside an agent view conversation.
     Agent {
@@ -171,6 +175,9 @@ pub enum AgentViewVisibility {
         pending_other_conversation_ids: HashSet<AIConversationId>,
         /// Other conversations where users see this block as attached context after send.
         other_conversation_ids: HashSet<AIConversationId>,
+        /// Other conversations that display this block without a pending attachment.
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        retained_conversation_ids: HashSet<AIConversationId>,
     },
 }
 
@@ -180,6 +187,7 @@ impl AgentViewVisibility {
         Self::Terminal {
             pending_conversation_ids: HashSet::new(),
             conversation_ids: HashSet::new(),
+            retained_conversation_ids: HashSet::new(),
         }
     }
 
@@ -189,6 +197,7 @@ impl AgentViewVisibility {
             origin_conversation_id: conversation_id,
             pending_other_conversation_ids: HashSet::new(),
             other_conversation_ids: HashSet::new(),
+            retained_conversation_ids: HashSet::new(),
         }
     }
 
@@ -206,41 +215,50 @@ impl AgentViewVisibility {
     fn add_attached_conversation_id(&mut self, id: AIConversationId) {
         match self {
             Self::Terminal {
-                conversation_ids, ..
+                conversation_ids,
+                retained_conversation_ids,
+                ..
             } => {
+                retained_conversation_ids.remove(&id);
                 conversation_ids.insert(id);
             }
             Self::Agent {
                 origin_conversation_id,
                 other_conversation_ids,
+                retained_conversation_ids,
                 ..
             } => {
                 if id == *origin_conversation_id {
                     return;
                 }
+                retained_conversation_ids.remove(&id);
                 other_conversation_ids.insert(id);
             }
         }
     }
 
     /// Marks the block as pending context in the conversation with the given ID.
-    /// It maybe removed if the user removes the block attachment before sending the request, else if it is attached it will be 'promoted'.
+    /// Sending promotes it to attached context; detaching retains only its visibility.
     fn add_pending_conversation_id(&mut self, id: AIConversationId) {
         match self {
             Self::Terminal {
                 pending_conversation_ids,
+                retained_conversation_ids,
                 ..
             } => {
+                retained_conversation_ids.remove(&id);
                 pending_conversation_ids.insert(id);
             }
             Self::Agent {
                 origin_conversation_id,
                 pending_other_conversation_ids,
+                retained_conversation_ids,
                 ..
             } => {
                 if id == *origin_conversation_id {
                     return;
                 }
+                retained_conversation_ids.remove(&id);
                 pending_other_conversation_ids.insert(id);
             }
         }
@@ -253,6 +271,7 @@ impl AgentViewVisibility {
             Self::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                ..
             } => {
                 if pending_conversation_ids.remove(&id) {
                     conversation_ids.insert(id);
@@ -276,18 +295,26 @@ impl AgentViewVisibility {
         }
     }
 
-    /// Removes a pending conversation ID from the set of conversations where this block should be visible.
-    /// Returns true if the conversation ID was present and removed, false if it wasn't present.
-    fn remove_pending_conversation_id(&mut self, id: AIConversationId) -> bool {
-        match self {
+    /// Removes the pending attachment without hiding the source command and output.
+    /// Retained visibility is never promoted to sent context.
+    fn detach_from_conversation(&mut self, id: AIConversationId) -> bool {
+        let (pending_ids, retained_ids) = match self {
             Self::Terminal {
                 pending_conversation_ids,
+                retained_conversation_ids,
                 ..
-            } => pending_conversation_ids.remove(&id),
+            } => (pending_conversation_ids, retained_conversation_ids),
             Self::Agent {
                 pending_other_conversation_ids,
+                retained_conversation_ids,
                 ..
-            } => pending_other_conversation_ids.remove(&id),
+            } => (pending_other_conversation_ids, retained_conversation_ids),
+        };
+        if pending_ids.remove(&id) {
+            retained_ids.insert(id);
+            true
+        } else {
+            false
         }
     }
 }
@@ -1072,20 +1099,16 @@ impl Block {
     }
 
     /// Adds a conversation ID to the set of conversations where this block is pending context.
-    /// It maybe removed if the user removes the block attachment before sending the request, else if it is attached it will be 'promoted'.
+    /// Sending promotes it to attached context; detaching retains only its visibility.
     pub(super) fn add_pending_conversation_id(&mut self, conversation_id: AIConversationId) {
         self.agent_view_visibility
             .add_pending_conversation_id(conversation_id);
     }
 
-    /// Removes a conversation ID from the set of conversations where this block should be visible.
-    /// Returns true if the conversation ID was present and removed, false if it wasn't present.
-    pub(super) fn remove_pending_conversation_id(
-        &mut self,
-        conversation_id: AIConversationId,
-    ) -> bool {
+    /// Removes a pending attachment while leaving the source block visible.
+    pub(super) fn detach_from_conversation(&mut self, conversation_id: AIConversationId) -> bool {
         self.agent_view_visibility
-            .remove_pending_conversation_id(conversation_id)
+            .detach_from_conversation(conversation_id)
     }
 
     /// Moves the block from pending context to attached context for the given conversation ID.
@@ -1406,18 +1429,22 @@ impl Block {
                         AgentViewVisibility::Terminal {
                             pending_conversation_ids,
                             conversation_ids,
+                            retained_conversation_ids,
                         } => {
                             pending_conversation_ids.contains(active_id)
                                 || conversation_ids.contains(active_id)
+                                || retained_conversation_ids.contains(active_id)
                         }
                         AgentViewVisibility::Agent {
                             origin_conversation_id,
                             pending_other_conversation_ids,
                             other_conversation_ids,
+                            retained_conversation_ids,
                         } => {
                             active_id == origin_conversation_id
                                 || pending_other_conversation_ids.contains(active_id)
                                 || other_conversation_ids.contains(active_id)
+                                || retained_conversation_ids.contains(active_id)
                         }
                     };
                     if !visible_in_conversation {

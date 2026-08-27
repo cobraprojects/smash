@@ -1818,6 +1818,7 @@ fn test_agent_origin_block_can_be_attached_to_other_conversation() {
             origin_conversation_id: observed_origin_conversation_id,
             pending_other_conversation_ids,
             other_conversation_ids,
+            ..
         } => {
             assert_eq!(
                 observed_origin_conversation_id,
@@ -1849,7 +1850,7 @@ fn test_agent_origin_block_can_be_attached_to_other_conversation() {
         _ => panic!("Expected agent visibility for agent-origin block"),
     }
 
-    let removed = block_list.remove_pending_context_assocation_for_blocks(
+    let removed = block_list.detach_context_blocks_from_conversation(
         [&user_block_id].into_iter(),
         other_conversation_id,
     );
@@ -1860,6 +1861,95 @@ fn test_agent_origin_block_can_be_attached_to_other_conversation() {
     let user_block = block_list.block_at(user_block_index).unwrap();
     assert!(user_block.is_empty(block_list.transcript_scope()));
 }
+#[test]
+fn smash_detached_blocks_remain_visible_without_becoming_sent_context() {
+    let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
+    for agent_origin in [false, true] {
+        let mut block_list =
+            new_bootstrapped_block_list(None, None, ChannelEventListener::new_for_test());
+        let origin_id = AIConversationId::new();
+        let conversation_id = AIConversationId::new();
+        let unrelated_id = AIConversationId::new();
+        if agent_origin {
+            block_list.enter_conversation_context(origin_id, false, false);
+        }
+        let block_index = insert_block(&mut block_list, "printf detach-check", "DETACH_OUTPUT");
+        let block_id = block_list.block_at(block_index).unwrap().id().clone();
+        block_list.associate_blocks_with_conversation([&block_id].into_iter(), conversation_id);
+        block_list.enter_conversation_context(conversation_id, false, false);
+        assert!(
+            block_list
+                .block_with_id(&block_id)
+                .unwrap()
+                .is_visible(block_list.transcript_scope())
+        );
+
+        let detached = block_list
+            .detach_context_blocks_from_conversation([&block_id].into_iter(), conversation_id);
+        assert_eq!(detached.len(), 1);
+        assert!(
+            block_list
+                .promote_blocks_to_attached_from_conversation(conversation_id)
+                .is_empty(),
+            "detached visibility must not become sent context"
+        );
+        let block = block_list.block_with_id(&block_id).unwrap();
+        assert!(block.is_visible(block_list.transcript_scope()));
+        assert_eq!(block.command_to_string(), "printf detach-check");
+        assert_eq!(block.output_to_string(), "DETACH_OUTPUT");
+
+        // Exercise the same JSON format used for stored terminal blocks.
+        let serialized = SerializedBlock::from(block);
+        let restored = SerializedBlock::from_json(&serialized.to_json().unwrap()).unwrap();
+        assert_eq!(
+            restored.agent_view_visibility,
+            Some(detached[0].1.clone().into())
+        );
+        let mut restored_list =
+            new_bootstrapped_block_list(None, None, ChannelEventListener::new_for_test());
+        restored_list.insert_restored_block(&restored);
+        let restored_block = restored_list.block_with_id(&block_id).unwrap();
+        assert!(restored_block.is_visible(&TranscriptScope::Conversation(conversation_id)));
+        assert!(!restored_block.is_visible(&TranscriptScope::Conversation(unrelated_id)));
+        assert_eq!(
+            restored_block.is_visible(&TranscriptScope::Terminal),
+            !agent_origin
+        );
+
+        // Reattaching makes the block pending again; only sending promotes it.
+        block_list.associate_blocks_with_conversation([&block_id].into_iter(), conversation_id);
+        let promoted = block_list.promote_blocks_to_attached_from_conversation(conversation_id);
+        assert_eq!(promoted.len(), 1);
+        match &promoted[0].1 {
+            AgentViewVisibility::Terminal {
+                conversation_ids,
+                pending_conversation_ids,
+                retained_conversation_ids,
+            } => {
+                assert!(conversation_ids.contains(&conversation_id));
+                assert!(pending_conversation_ids.is_empty());
+                assert!(retained_conversation_ids.is_empty());
+            }
+            AgentViewVisibility::Agent {
+                other_conversation_ids,
+                pending_other_conversation_ids,
+                retained_conversation_ids,
+                ..
+            } => {
+                assert!(other_conversation_ids.contains(&conversation_id));
+                assert!(pending_other_conversation_ids.is_empty());
+                assert!(retained_conversation_ids.is_empty());
+            }
+        }
+        assert!(
+            block_list
+                .detach_context_blocks_from_conversation([&block_id].into_iter(), conversation_id)
+                .is_empty(),
+            "removing pending context must not change already-sent context"
+        );
+    }
+}
+
 #[test]
 fn unfiltered_transcript_scope_shows_restored_conversation_command_blocks() {
     let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -1925,6 +2015,7 @@ fn test_finish_startup_commands_at_block_attaches_and_unhides_command_blocks_sin
             AgentViewVisibility::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                ..
             } => {
                 assert!(pending_conversation_ids.is_empty());
                 assert!(conversation_ids.contains(&conversation_id));
@@ -1933,6 +2024,7 @@ fn test_finish_startup_commands_at_block_attaches_and_unhides_command_blocks_sin
                 origin_conversation_id,
                 pending_other_conversation_ids,
                 other_conversation_ids,
+                ..
             } => panic!(
                 "expected terminal visibility, got agent visibility: {origin_conversation_id:?}, {pending_other_conversation_ids:?}, {other_conversation_ids:?}"
             ),

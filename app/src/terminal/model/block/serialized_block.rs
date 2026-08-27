@@ -29,6 +29,8 @@ pub enum SerializedAgentViewVisibility {
         #[serde(default)]
         pending_conversation_ids: HashSet<AIConversationId>,
         conversation_ids: HashSet<AIConversationId>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        retained_conversation_ids: HashSet<AIConversationId>,
     },
     Agent {
         #[serde(alias = "conversation_id")]
@@ -37,6 +39,8 @@ pub enum SerializedAgentViewVisibility {
         pending_other_conversation_ids: HashSet<AIConversationId>,
         #[serde(default)]
         other_conversation_ids: HashSet<AIConversationId>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        retained_conversation_ids: HashSet<AIConversationId>,
     },
 }
 
@@ -46,18 +50,22 @@ impl From<AgentViewVisibility> for SerializedAgentViewVisibility {
             AgentViewVisibility::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                retained_conversation_ids,
             } => SerializedAgentViewVisibility::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                retained_conversation_ids,
             },
             AgentViewVisibility::Agent {
                 origin_conversation_id,
                 pending_other_conversation_ids,
                 other_conversation_ids,
+                retained_conversation_ids,
             } => SerializedAgentViewVisibility::Agent {
                 origin_conversation_id,
                 pending_other_conversation_ids,
                 other_conversation_ids,
+                retained_conversation_ids,
             },
         }
     }
@@ -69,18 +77,22 @@ impl From<SerializedAgentViewVisibility> for AgentViewVisibility {
             SerializedAgentViewVisibility::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                retained_conversation_ids,
             } => AgentViewVisibility::Terminal {
                 pending_conversation_ids,
                 conversation_ids,
+                retained_conversation_ids,
             },
             SerializedAgentViewVisibility::Agent {
                 origin_conversation_id,
                 pending_other_conversation_ids,
                 other_conversation_ids,
+                retained_conversation_ids,
             } => AgentViewVisibility::Agent {
                 origin_conversation_id,
                 pending_other_conversation_ids,
                 other_conversation_ids,
+                retained_conversation_ids,
             },
         }
     }

@@ -61,3 +61,11 @@ fn from_json_accepts_integer_array_bytes() {
     assert_eq!(block.stylized_command, b"echo hello");
     assert_eq!(block.stylized_output, b"hello world");
 }
+
+#[test]
+fn legacy_terminal_visibility_defaults_to_no_retained_blocks() {
+    let visibility: SerializedAgentViewVisibility =
+        serde_json::from_str(r#"{"Terminal":{"conversation_ids":[]}}"#).unwrap();
+    let visibility: AgentViewVisibility = visibility.into();
+    assert_eq!(visibility, AgentViewVisibility::new_from_terminal());
+}
