@@ -480,7 +480,7 @@ impl LeftPanelView {
         };
         // `active_view_state::new` restores the last selected tool from disk.
         // Reconcile it with this build's available tools immediately so an
-        // upstream-only panel (for example Agent conversations in Smash) can
+        // unavailable panel can
         // never survive an upgrade as a hidden, selected sign-in surface.
         view.update_available_views(views, ctx);
 

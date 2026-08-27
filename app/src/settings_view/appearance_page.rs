@@ -1451,8 +1451,8 @@ impl AppearanceSettingsPageView {
         if cfg!(feature = "local_fs") {
             tools_panel_widgets.push(Box::new(ToolsPanelProjectExplorerWidget::default()));
         }
-        if ChannelState::channel() != Channel::Oss
-            && FeatureFlag::AgentViewConversationListView.is_enabled()
+        if ChannelState::channel() == Channel::Oss
+            || FeatureFlag::AgentViewConversationListView.is_enabled()
         {
             tools_panel_widgets.push(Box::new(ToolsPanelConversationHistoryWidget::default()));
         }

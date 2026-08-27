@@ -135,6 +135,36 @@ pub fn convert_conversation_data_to_ai_conversation(
     }
 }
 
+pub(super) fn convert_executed_shell_command(command: api::ExecutedShellCommand) -> BlockContext {
+    BlockContext {
+        id: if command.command_id.is_empty() {
+            BlockId::default()
+        } else {
+            command.command_id.into()
+        },
+        index: BlockIndex::from(0),
+        command: command.command,
+        output: command.output,
+        exit_code: ExitCode::from(command.exit_code),
+        is_auto_attached: command.is_auto_attached,
+        started_ts: command
+            .started_ts
+            .as_ref()
+            .map(|ts| proto_timestamp_to_local_datetime(ts.seconds, ts.nanos)),
+        finished_ts: command
+            .finished_ts
+            .as_ref()
+            .map(|ts| proto_timestamp_to_local_datetime(ts.seconds, ts.nanos)),
+        pwd: None,
+        shell: None,
+        username: None,
+        hostname: None,
+        git_branch: None,
+        os: None,
+        session_id: None,
+    }
+}
+
 /// Converts InputContext from the API to the application type `Arc<[AIAgentContext]>`
 #[allow(clippy::single_range_in_vec_init)]
 pub(crate) fn convert_input_context(context: Option<&api::InputContext>) -> Arc<[AIAgentContext]> {
@@ -148,29 +178,9 @@ pub(crate) fn convert_input_context(context: Option<&api::InputContext>) -> Arc<
     #[allow(deprecated)]
     for executed_shell_command in &context.executed_shell_commands {
         if !executed_shell_command.command.is_empty() {
-            result.push(AIAgentContext::Block(Box::new(BlockContext {
-                id: BlockId::default(),
-                index: BlockIndex::from(0),
-                command: executed_shell_command.command.clone(),
-                output: executed_shell_command.output.clone(),
-                exit_code: ExitCode::from(executed_shell_command.exit_code),
-                is_auto_attached: executed_shell_command.is_auto_attached,
-                started_ts: executed_shell_command
-                    .started_ts
-                    .as_ref()
-                    .map(|ts| proto_timestamp_to_local_datetime(ts.seconds, ts.nanos)),
-                finished_ts: executed_shell_command
-                    .finished_ts
-                    .as_ref()
-                    .map(|ts| proto_timestamp_to_local_datetime(ts.seconds, ts.nanos)),
-                pwd: None,
-                shell: None,
-                username: None,
-                hostname: None,
-                git_branch: None,
-                os: None,
-                session_id: None,
-            })));
+            result.push(AIAgentContext::Block(Box::new(
+                convert_executed_shell_command(executed_shell_command.clone()),
+            )));
         }
     }
 
@@ -389,7 +399,9 @@ impl ConvertToExchanges for &api::Task {
                         query: user_query.query.clone(),
                         context: convert_input_context(user_query.context.as_ref()),
                         static_query_type: None,
-                        referenced_attachments: HashMap::new(),
+                        referenced_attachments: user_query.referenced_attachments.iter()
+                            .filter_map(|(name, attachment)| attachment.clone().try_into().ok()
+                                .map(|attachment| (name.clone(), attachment))).collect(),
                         user_query_mode: convert_user_query_mode(user_query.mode.as_ref()),
                         running_command: None,
                         intended_agent: Some(user_query.intended_agent()),

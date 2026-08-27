@@ -3350,11 +3350,8 @@ fn test_vertical_tabs_panel_auto_shows_when_setting_enabled() {
 }
 
 #[test]
-fn test_active_tab_bar_position_id_tracks_layout() {
-    // Cross-window drag hit-testing (`tab_bar_rects_for_window`) targets only
-    // the active tab presentation. Regression guard for the bug where the
-    // inactive horizontal bar registered as a drop zone while vertical tabs
-    // were enabled, lighting up a spurious placeholder over the top bar.
+fn test_smash_active_tab_bar_position_id_tracks_layout() {
+    // Smash's combined layout keeps tabs horizontal and puts sessions in the sidebar.
     let _vertical_tabs_guard = FeatureFlag::VerticalTabs.override_enabled(true);
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -3364,18 +3361,14 @@ fn test_active_tab_bar_position_id_tracks_layout() {
             assert_eq!(active_tab_bar_position_id(ctx), TAB_BAR_POSITION_ID);
         });
 
-        // Vertical tabs (setting on): only the vertical panel is the drop zone,
-        // so the horizontal bar no longer registers as a cross-window target.
+        // Combined layout (setting on): the top strip is still the tab drop zone.
         app.update(|ctx| {
             TabSettings::handle(ctx).update(ctx, |settings, ctx| {
                 report_if_error!(settings.use_vertical_tabs.set_value(true, ctx));
             });
         });
         app.read(|ctx| {
-            assert_eq!(
-                active_tab_bar_position_id(ctx),
-                VERTICAL_TABS_PANEL_POSITION_ID
-            );
+            assert_eq!(active_tab_bar_position_id(ctx), TAB_BAR_POSITION_ID);
         });
     });
 }
@@ -4022,6 +4015,77 @@ fn test_tab_mru_order() {
             workspace.handle_action(&WorkspaceAction::ActivateTab(0), ctx);
 
             assert_eq!(workspace.tab_mru_order(), &[id_a, id_c, id_b]);
+        });
+    });
+}
+
+#[test]
+fn test_smash_session_top_tab_drag_keeps_session_membership() {
+    let _groups = FeatureFlag::GroupedTabs.override_enabled(true);
+    let _vertical = FeatureFlag::VerticalTabs.override_enabled(true);
+    let _detach = FeatureFlag::DragTabsToWindows.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            TabSettings::handle(ctx).update(ctx, |settings, ctx| {
+                settings.use_vertical_tabs.set_value(true, ctx).unwrap();
+            });
+            workspace.add_terminal_tab(false, ctx);
+            workspace.handle_action(&WorkspaceAction::NewTabGroupFromTab(0), ctx);
+            let session = workspace.tabs[0].group_id.expect("session");
+            workspace.assign_tab_to_group(1, Some(session), ctx);
+            workspace.set_active_tab_index(0, ctx);
+            let active_pane = workspace.tabs[0].pane_group.id();
+            {
+                let presenter = ctx.presenter(ctx.window_id()).unwrap();
+                let mut presenter = presenter.borrow_mut();
+                let cache = presenter.position_cache_mut();
+                cache.start();
+                cache.cache_position_indefinitely(
+                    TAB_BAR_POSITION_ID.into(),
+                    RectF::new(vec2f(0., 0.), vec2f(1000., 34.)),
+                );
+                cache.cache_position_indefinitely(
+                    VERTICAL_TABS_PANEL_POSITION_ID.into(),
+                    RectF::new(vec2f(0., 34.), vec2f(240., 700.)),
+                );
+                cache.cache_position_indefinitely(
+                    tab_position_id(0),
+                    RectF::new(vec2f(150., 0.), vec2f(180., 34.)),
+                );
+                cache.cache_position_indefinitely(
+                    tab_position_id(1),
+                    RectF::new(vec2f(330., 0.), vec2f(180., 34.)),
+                );
+                cache.end();
+            }
+            let sessions_before = workspace.tab_groups.len();
+            workspace.on_tab_drag(0, RectF::new(vec2f(400., 0.), vec2f(180., 34.)), ctx);
+            assert_eq!(workspace.tabs[0].group_id, Some(session));
+            assert_eq!(workspace.tabs[1].group_id, Some(session));
+            assert_eq!(workspace.tab_groups.len(), sessions_before);
+            assert_eq!(workspace.tabs[1].pane_group.id(), active_pane);
+            assert_eq!(workspace.active_tab_index, 1);
+            assert!(!CrossWindowTabDrag::as_ref(ctx).is_active());
+        });
+    });
+}
+
+#[test]
+fn test_smash_can_open_local_conversation_history() {
+    let _history = FeatureFlag::AgentViewConversationListView.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            workspace.handle_action(&WorkspaceAction::OpenConversationListView, ctx);
+            assert!(
+                workspace
+                    .active_tab_pane_group()
+                    .as_ref(ctx)
+                    .left_panel_open
+            );
         });
     });
 }

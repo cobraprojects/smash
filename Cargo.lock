@@ -9676,6 +9676,15 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
+version = "2.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "ordered-float"
 version = "3.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1e1c390732d15f1d48471625cd92d154e66db2c56645e29a9cd26f4699f72dc"
@@ -10609,9 +10618,12 @@ version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b89455ef41ed200cafc47c76c552ee7792370ac420497e551f16123a9135f76e"
 dependencies = [
+ "base64 0.22.1",
  "prost",
  "prost-reflect-derive",
  "prost-types",
+ "serde",
+ "serde-value",
 ]
 
 [[package]]
@@ -12372,6 +12384,16 @@ checksum = "011bbe7d7ea2cad78c139dc465355a3965254def5d20d54ce59c358341fa7bd9"
 dependencies = [
  "base64 0.22.1",
  "hex",
+ "serde",
+]
+
+[[package]]
+name = "serde-value"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
+dependencies = [
+ "ordered-float 2.10.1",
  "serde",
 ]
 
@@ -15283,6 +15305,7 @@ dependencies = [
  "pprof",
  "prost",
  "prost-build",
+ "prost-reflect",
  "prost-types",
  "qrcode",
  "rand 0.8.6",

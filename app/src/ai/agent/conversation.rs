@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use vec1::{Size0Error, Vec1};
 use warp_cli::agent::Harness;
+use warp_core::channel::{Channel, ChannelState};
 use warp_core::command::ExitCode;
 use warp_core::execution_mode::AppExecutionMode;
 use warp_core::features::FeatureFlag;
@@ -3553,8 +3554,9 @@ impl AIConversation {
             return;
         }
 
-        // Check if session restoration is enabled before writing any state.
-        if !*GeneralSettings::as_ref(ctx).restore_session
+        // Smash chat history is independent of whether terminal windows reopen on launch.
+        if (ChannelState::channel() != Channel::Oss
+            && !*GeneralSettings::as_ref(ctx).restore_session)
             || !AppExecutionMode::as_ref(ctx).can_save_session()
         {
             return;

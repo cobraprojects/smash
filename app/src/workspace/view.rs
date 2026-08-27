@@ -24003,8 +24003,8 @@ impl Workspace {
         if cfg!(feature = "local_fs") && *CodeSettings::as_ref(ctx).show_project_explorer.value() {
             views.push(ToolPanelView::ProjectExplorer);
         }
-        if ChannelState::channel() != Channel::Oss
-            && FeatureFlag::AgentViewConversationListView.is_enabled()
+        if (ChannelState::channel() == Channel::Oss
+            || FeatureFlag::AgentViewConversationListView.is_enabled())
             && *AISettings::as_ref(ctx).show_conversation_history
         {
             views.push(ToolPanelView::ConversationListView);
@@ -26388,8 +26388,8 @@ impl TypedActionView for Workspace {
                 }
             }
             ToggleConversationListView => {
-                if ChannelState::channel() != Channel::Oss
-                    && FeatureFlag::AgentViewConversationListView.is_enabled()
+                if ChannelState::channel() == Channel::Oss
+                    || FeatureFlag::AgentViewConversationListView.is_enabled()
                 {
                     let is_showing = self.left_panel_view.as_ref(ctx).active_view()
                         == ToolPanelView::ConversationListView;
@@ -26401,8 +26401,8 @@ impl TypedActionView for Workspace {
                 }
             }
             OpenConversationListView => {
-                if ChannelState::channel() != Channel::Oss
-                    && FeatureFlag::AgentViewConversationListView.is_enabled()
+                if ChannelState::channel() == Channel::Oss
+                    || FeatureFlag::AgentViewConversationListView.is_enabled()
                 {
                     self.open_left_panel_view(&LeftPanelAction::ConversationListView, ctx);
                 }
@@ -28737,8 +28737,7 @@ impl Workspace {
                     // the normal reorder path below: the placeholder is
                     // detached mid cross-window drag and shouldn't churn group
                     // membership.
-                    let use_vertical_tabs = FeatureFlag::VerticalTabs.is_enabled()
-                        && *TabSettings::as_ref(ctx).use_vertical_tabs;
+                    let use_vertical_tabs = uses_vertical_tabs(ctx) && !uses_session_tabs(ctx);
                     let new_index = if use_vertical_tabs {
                         self.calculate_updated_tab_index_vertical(current_index, position, ctx)
                     } else {
@@ -28776,7 +28775,7 @@ impl Workspace {
         }
 
         let source_is_single_tab = self.tabs.len() == 1;
-        if (is_drag_outside_tab_bar || source_is_single_tab)
+        if (is_drag_outside_tab_bar || (source_is_single_tab && !uses_session_tabs(ctx)))
             && FeatureFlag::DragTabsToWindows.is_enabled()
         {
             let source_was_single_tab = source_is_single_tab;
@@ -28809,7 +28808,7 @@ impl Workspace {
             // Both are frozen for the duration of the drag so the floating
             // ghost chip mirrors what was on screen when the drag began,
             // even if the user toggles their layout mid-drag.
-            let was_vertical_layout = uses_vertical_tabs(ctx);
+            let was_vertical_layout = uses_vertical_tabs(ctx) && !uses_session_tabs(ctx);
             let source_element_size = ctx
                 .element_position_by_id(tab_position_id(current_index))
                 .map(|rect| rect.size())
@@ -28879,9 +28878,11 @@ impl Workspace {
             return;
         }
 
-        let use_vertical_tabs =
-            FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
-        let groups_enabled = FeatureFlag::GroupedTabs.is_enabled();
+        let session_tabs = uses_session_tabs(ctx);
+        let use_vertical_tabs = uses_vertical_tabs(ctx) && !session_tabs;
+        // Top tabs belong to the selected session. Reordering them must not use sidebar
+        // group hit-testing, which otherwise ungroups the tab and creates a new session.
+        let groups_enabled = FeatureFlag::GroupedTabs.is_enabled() && !session_tabs;
 
         if groups_enabled {
             // Reassign membership when the dragged tab enters a different
@@ -29108,7 +29109,11 @@ impl Workspace {
         // Use `neighbor_drag_rect` (rather than reading `tab_position_id`
         // directly) so members of a collapsed group fall back to the group's
         // visible container rect instead of their stale last-expanded rect.
-        let maybe_left_tab = if current_index > 0 {
+        let session_tabs = uses_session_tabs(ctx);
+        let in_same_session = |index: usize| {
+            !session_tabs || self.tabs[index].group_id == self.tabs[current_index].group_id
+        };
+        let maybe_left_tab = if current_index > 0 && in_same_session(current_index - 1) {
             self.neighbor_drag_rect(current_index - 1, false, ctx)
         } else {
             None
@@ -29119,11 +29124,12 @@ impl Workspace {
             return current_index - 1;
         }
 
-        let maybe_right_tab = if current_index < self.tabs.len() - 1 {
-            self.neighbor_drag_rect(current_index + 1, false, ctx)
-        } else {
-            None
-        };
+        let maybe_right_tab =
+            if current_index < self.tabs.len() - 1 && in_same_session(current_index + 1) {
+                self.neighbor_drag_rect(current_index + 1, false, ctx)
+            } else {
+                None
+            };
         if let Some(tab_position) = maybe_right_tab
             && midpoint_drag_x > tab_position.min_x()
         {
@@ -29189,7 +29195,22 @@ impl Workspace {
         };
         // Resolve the group along whichever axis the active tab bar uses, then
         // clamp ungrouped insertions out of the pinned region below.
-        let is_vertical = uses_vertical_tabs(ctx);
+        if uses_session_tabs(ctx) {
+            // A top-strip drop belongs to the selected session, including its trailing slot.
+            let group = self
+                .tabs
+                .get(self.active_tab_index)
+                .and_then(|tab| tab.group_id);
+            if let Some((first, last)) =
+                group.and_then(|id| group_member_index_range(&self.tabs, id))
+            {
+                return TabBarHoverIndex::BeforeTab {
+                    index: index.clamp(first, last + 1),
+                    group,
+                };
+            }
+        }
+        let is_vertical = uses_vertical_tabs(ctx) && !uses_session_tabs(ctx);
         let group = if FeatureFlag::GroupedTabs.is_enabled() {
             self.insertion_group(index, drag_position.center(), is_vertical, ctx)
         } else {
@@ -29351,7 +29372,7 @@ impl Workspace {
             .and_then(|gid| self.tab_groups.get(&gid))
             .is_some_and(|g| g.collapsed);
 
-        if neighbor_in_collapsed_group {
+        if neighbor_in_collapsed_group && !uses_session_tabs(ctx) {
             let group_id = neighbor_group_id.unwrap();
             let id = if is_vertical {
                 vtab_group_position_id(group_id)
@@ -29681,32 +29702,26 @@ pub(super) fn group_has_single_member(tabs: &[TabData], group_id: TabGroupId) ->
     group_member_index_range(tabs, group_id).is_some_and(|(first, last)| first == last)
 }
 
-/// Returns the save-position id of the tab presentation laid out for the
-/// current tab layout: the vertical tabs panel when vertical tabs are in use,
-/// otherwise the horizontal tab bar.
-///
-/// Uses the shared `uses_vertical_tabs` predicate — the same
-/// `FeatureFlag::VerticalTabs` + `use_vertical_tabs` check the tab bar uses to
-/// decide what to render (see `render_tab_bar_contents`) — so the id always
-/// points at wherever the tab strip is actually shown.
+/// Returns the tab strip's position ID. Smash's session sidebar does not contain tabs;
+/// its tabs remain in the horizontal strip even while the sidebar is visible.
 pub(crate) fn active_tab_bar_position_id(app: &AppContext) -> &'static str {
-    if uses_vertical_tabs(app) {
+    if uses_vertical_tabs(app) && !uses_session_tabs(app) {
         VERTICAL_TABS_PANEL_POSITION_ID
     } else {
         TAB_BAR_POSITION_ID
     }
 }
 
+/// In Smash's combined layout the sidebar contains sessions, not individual tabs.
+fn uses_session_tabs(app: &AppContext) -> bool {
+    ChannelState::channel() == Channel::Oss && uses_vertical_tabs(app)
+}
+
 /// Returns the tab-bar rect for `window_id`'s **active** tab layout, or an
 /// empty `Vec` if that presentation isn't laid out this frame.
 ///
-/// Only the active presentation is a valid cross-window drop zone. In
-/// vertical-tabs mode the tabs live in the vertical panel and the horizontal
-/// bar at the top renders only toolbar controls (no tab strip), so it must
-/// not register as a drop target; in horizontal-tabs mode the reverse holds.
-/// Returning the inactive presentation's rect would light up a spurious
-/// insertion placeholder when a tab is dragged over it. Returned as a `Vec`
-/// (at most one rect) so callers can iterate uniformly.
+/// Only the surface containing tabs is a drop zone, not the session sidebar or
+/// toolbar-only space. Returned as a `Vec` (at most one rect) for uniform iteration.
 pub(crate) fn tab_bar_rects_for_window(window_id: WindowId, app: &AppContext) -> Vec<RectF> {
     app.element_position_by_id_at_last_frame(window_id, active_tab_bar_position_id(app))
         .into_iter()

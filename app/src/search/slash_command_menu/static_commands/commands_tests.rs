@@ -467,7 +467,7 @@ fn copy_debugging_id_command_has_correct_registry_metadata() {
 }
 
 #[test]
-fn clear_command_is_registered_only_for_tui_mode() {
+fn clear_command_is_registered_for_gui_and_tui() {
     assert!(
         all_commands(settings::SettingsMode::Tui)
             .iter()
@@ -477,8 +477,8 @@ fn clear_command_is_registered_only_for_tui_mode() {
     assert!(
         all_commands(settings::SettingsMode::Gui)
             .iter()
-            .all(|command| command.kind != SlashCommandKind::Clear),
-        "/clear should not be registered in GUI mode"
+            .any(|command| command.kind == SlashCommandKind::Clear),
+        "/clear should be registered in GUI mode"
     );
 }
 
@@ -491,8 +491,11 @@ fn clear_command_has_correct_registry_metadata() {
 
     assert_eq!(command.name, "/clear");
     assert_eq!(command.kind, SlashCommandKind::Clear);
-    assert_eq!(command.supported_surfaces, SlashCommandSurfaces::TuiOnly);
-    assert_eq!(command.supported_surfaces.gui_icon_path(), None);
+    assert!(command.supports_surface(settings::SettingsMode::Gui));
+    assert_eq!(
+        command.supported_surfaces.gui_icon_path(),
+        Some("bundled/svg/new-conversation.svg")
+    );
     assert!(!command.auto_enter_ai_mode);
     assert_eq!(
         command.availability,

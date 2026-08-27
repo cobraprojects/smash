@@ -493,7 +493,7 @@ impl Input {
             SlashCommandKind::AddRule => {
                 ctx.dispatch_typed_action(&TerminalAction::OpenAddRulePane);
             }
-            SlashCommandKind::Agent | SlashCommandKind::New => {
+            SlashCommandKind::Agent | SlashCommandKind::New | SlashCommandKind::Clear => {
                 if !self
                     .ai_context_model
                     .as_ref(ctx)
@@ -531,6 +531,14 @@ impl Input {
                     }
                 }
 
+                if matches!(
+                    command.kind,
+                    SlashCommandKind::New | SlashCommandKind::Clear
+                ) {
+                    // /new is an explicit context reset. /agent can still carry blocks the
+                    // user just attached from the terminal into their first conversation.
+                    self.clear_attached_context(ctx);
+                }
                 let prompt = argument.and_then(|argument| {
                     let trimmed = argument.trim();
                     if trimmed.is_empty() {
@@ -1300,7 +1308,6 @@ impl Input {
             | SlashCommandKind::VimMode
             | SlashCommandKind::Exit
             | SlashCommandKind::Logout
-            | SlashCommandKind::Clear
             | SlashCommandKind::Status => {
                 debug_assert!(
                     false,

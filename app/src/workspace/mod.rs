@@ -800,8 +800,8 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_CONVERSATION_HISTORY))
         .with_enabled(|| {
-            ChannelState::channel() != Channel::Oss
-                && FeatureFlag::AgentViewConversationListView.is_enabled()
+            ChannelState::channel() == Channel::Oss
+                || FeatureFlag::AgentViewConversationListView.is_enabled()
         })
         .with_custom_action(CustomAction::ToggleConversationListView),
         EditableBinding::new(
@@ -864,8 +864,8 @@ pub fn init(app: &mut AppContext) {
             WorkspaceAction::ToggleConversationListView,
         )
         .with_enabled(|| {
-            ChannelState::channel() != Channel::Oss
-                && FeatureFlag::AgentViewConversationListView.is_enabled()
+            ChannelState::channel() == Channel::Oss
+                || FeatureFlag::AgentViewConversationListView.is_enabled()
         })
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_CONVERSATION_HISTORY))
         .with_mac_key_binding("cmd-shift-A")

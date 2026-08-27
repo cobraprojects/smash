@@ -520,7 +520,7 @@ pub const OPEN_RULES: StaticCommand = StaticCommand {
 
 pub static NEW: LazyLock<StaticCommand> = LazyLock::new(|| StaticCommand {
     name: "/new",
-    description: "Start a new conversation (alias for /agent)",
+    description: "Start a fresh chat with empty context; keep the previous chat in history",
     kind: SlashCommandKind::New,
     supported_surfaces: SlashCommandSurfaces::GuiAndTui {
         icon_path: "bundled/svg/new-conversation.svg",
@@ -534,9 +534,11 @@ pub static NEW: LazyLock<StaticCommand> = LazyLock::new(|| StaticCommand {
 
 pub const CLEAR: StaticCommand = StaticCommand {
     name: "/clear",
-    description: "Clear the transcript and start a new conversation (alias for /agent)",
+    description: "Clear chat context and start fresh; keep the previous chat in history",
     kind: SlashCommandKind::Clear,
-    supported_surfaces: SlashCommandSurfaces::TuiOnly,
+    supported_surfaces: SlashCommandSurfaces::GuiAndTui {
+        icon_path: "bundled/svg/new-conversation.svg",
+    },
     availability: Availability::NO_LRC_CONTROL
         .union(Availability::AI_ENABLED)
         .union(Availability::NOT_CLOUD_AGENT),

@@ -34,6 +34,12 @@ impl TryFrom<api::Attachment> for AIAgentAttachment {
 
     fn try_from(attachment: api::Attachment) -> Result<Self, Self::Error> {
         match attachment.value {
+            Some(api::attachment::Value::PlainText(text)) => Ok(AIAgentAttachment::PlainText(text)),
+            Some(api::attachment::Value::ExecutedShellCommand(command)) => {
+                Ok(AIAgentAttachment::Block(
+                    super::convert_conversation::convert_executed_shell_command(command),
+                ))
+            }
             Some(api::attachment::Value::FilePathReference(fpr)) => {
                 Ok(AIAgentAttachment::FilePathReference {
                     file_id: String::new(),
