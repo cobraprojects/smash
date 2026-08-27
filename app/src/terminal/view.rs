@@ -19576,6 +19576,17 @@ impl TerminalView {
         });
 
         if !context_block_indices.is_empty() {
+            {
+                let model = self.model.lock();
+                context_block_indices.extend(
+                    self.ai_context_model
+                        .as_ref(ctx)
+                        .pending_context_block_ids()
+                        .iter()
+                        .filter_map(|id| model.block_list().block_with_id(id))
+                        .map(Block::index),
+                );
+            }
             self.change_block_selections(
                 |selected_blocks| selected_blocks.reset_to_block_indices(context_block_indices),
                 ctx,

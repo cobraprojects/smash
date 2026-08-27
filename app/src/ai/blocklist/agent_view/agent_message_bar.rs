@@ -43,13 +43,14 @@ use crate::search::slash_command_menu::static_commands::commands;
 use crate::settings::AISettings;
 use crate::terminal::input::buffer_model::{InputBufferModel, InputBufferUpdateEvent};
 use crate::terminal::input::message_bar::attached_context::{
-    AttachedBlocksMessageProducer, AttachedContextArgs, AttachedTextSelectionMessageProducer,
+    AttachedContextArgs, AttachedContextMessageTransformer,
 };
 use crate::terminal::input::message_bar::common::{
     disableable_message_item_color_overrides, render_standard_message_bar,
 };
 use crate::terminal::input::message_bar::{
     ChipHorizontalAlignment, EmptyMessageProducer, Message, MessageItem, MessageProvider,
+    MessageTransformer,
 };
 use crate::terminal::input::slash_command_model::{SlashCommandEntryState, SlashCommandModel};
 use crate::terminal::input::suggestions_mode_model::{
@@ -389,8 +390,6 @@ impl View for AgentMessageBar {
             .produce_message(args)
             .or_else(|| BootstrappingMessageProducer.produce_message(args))
             .or_else(|| ForkSlashCommandMessageProducer.produce_message(args))
-            .or_else(|| AttachedBlocksMessageProducer.produce_message(args))
-            .or_else(|| AttachedTextSelectionMessageProducer.produce_message(args))
             .or_else(|| AutodetectedBashModeMessageProducer.produce_message(args))
             .or_else(|| ExitCloudHandoffModeMessageProducer.produce_message(args))
             .or_else(|| ExitBashModeMessageProducer.produce_message(args))
@@ -400,6 +399,7 @@ impl View for AgentMessageBar {
         else {
             return Empty::new().finish();
         };
+        AttachedContextMessageTransformer.transform_message(&mut message, args);
 
         let right_element = if cfg!(target_family = "wasm") {
             None
@@ -512,10 +512,6 @@ pub struct AgentMessageArgs<'a> {
 }
 
 impl AttachedContextArgs for AgentMessageArgs<'_> {
-    fn terminal_model(&self) -> &TerminalModel {
-        self.terminal_model
-    }
-
     fn input_buffer_model(&self) -> &InputBufferModel {
         self.input_buffer_model
     }

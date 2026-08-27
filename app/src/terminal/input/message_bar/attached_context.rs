@@ -7,14 +7,12 @@ use crate::ai::blocklist::{BlocklistAIContextModel, BlocklistAIInputModel};
 use crate::terminal::input::InputAction;
 use crate::terminal::input::buffer_model::InputBufferModel;
 use crate::terminal::input::message_bar::{
-    Message, MessageItem, MessageProvider, truncated_command_for_block,
+    Message, MessageItem, MessageProvider, MessageTransformer,
 };
-use crate::terminal::model::TerminalModel;
 
 /// Trait for message args that can provide attached context information.
 /// Exposes the required dependencies for attached context message producers.
 pub trait AttachedContextArgs {
-    fn terminal_model(&self) -> &TerminalModel;
     fn input_buffer_model(&self) -> &InputBufferModel;
     fn input_model(&self) -> &BlocklistAIInputModel;
     fn agent_view_controller(&self) -> &AgentViewController;
@@ -24,6 +22,15 @@ pub trait AttachedContextArgs {
 
 /// Produces a message when blocks or selected text are attached as context.
 pub struct AttachedBlocksMessageProducer;
+
+/// Labels explicitly attached blocks, excluding automatically included context.
+pub fn attached_blocks_label(count: usize) -> String {
+    if count == 1 {
+        "1 block attached".to_owned()
+    } else {
+        format!("{count} blocks attached")
+    }
+}
 
 impl<Args: AttachedContextArgs + Copy> MessageProvider<Args> for AttachedBlocksMessageProducer {
     fn produce_message(&self, args: Args) -> Option<Message> {
@@ -41,32 +48,9 @@ impl<Args: AttachedContextArgs + Copy> MessageProvider<Args> for AttachedBlocksM
             return None;
         }
 
-        let block_command = context_block_ids
-            .iter()
-            .find_map(|id| {
-                args.terminal_model()
-                    .block_list()
-                    .block_with_id(id)
-                    .map(|block| block.command_to_string())
-            })
-            .map(|cmd| truncated_command_for_block(&cmd))?;
-
-        let message_text = if context_block_ids.len() == 1 {
-            format!("`{}` attached as context", block_command)
-        } else if context_block_ids.len() == 2 {
-            format!(
-                "`{}` and 1 other command attached as context",
-                block_command
-            )
-        } else {
-            format!(
-                "`{}` and {} other commands attached as context",
-                block_command,
-                context_block_ids.len().saturating_sub(1)
-            )
-        };
-
-        let mut items = vec![MessageItem::text(message_text)];
+        let mut items = vec![MessageItem::text(attached_blocks_label(
+            context_block_ids.len(),
+        ))];
 
         // Always show ESC hint in agent view, make it clickable
         if args.agent_view_controller().is_active() {
@@ -87,6 +71,28 @@ impl<Args: AttachedContextArgs + Copy> MessageProvider<Args> for AttachedBlocksM
         }
 
         Some(Message::new(items))
+    }
+}
+
+/// Keeps attachment status alongside the input's existing helpers and messages.
+pub struct AttachedContextMessageTransformer;
+
+impl<Args: AttachedContextArgs + Copy> MessageTransformer<Args>
+    for AttachedContextMessageTransformer
+{
+    fn transform_message(&self, message: &mut Message, args: Args) -> bool {
+        let Some(mut attachment) = AttachedBlocksMessageProducer
+            .produce_message(args)
+            .or_else(|| AttachedTextSelectionMessageProducer.produce_message(args))
+        else {
+            return false;
+        };
+        if !message.items.is_empty() {
+            attachment.items.push(MessageItem::text(" · "));
+            attachment.items.append(&mut message.items);
+        }
+        *message = attachment;
+        true
     }
 }
 

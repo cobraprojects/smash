@@ -25,6 +25,7 @@ use crate::terminal::input::SET_INPUT_MODE_TERMINAL_ACTION_NAME;
 use crate::terminal::input::inline_history::{AcceptHistoryItem, HistoryTab};
 use crate::terminal::input::inline_menu::{InlineMenuModel, InlineMenuModelEvent};
 use crate::terminal::input::message_bar::MessageTransformer;
+use crate::terminal::input::message_bar::attached_context::attached_blocks_label;
 use crate::terminal::input::suggestions_mode_model::{
     InputSuggestionsModeEvent, InputSuggestionsModeModel,
 };
@@ -467,28 +468,10 @@ impl MessageTransformer<TerminalMessageArgs<'_>> for AttachedBlocksMessageTransf
             return false;
         }
 
-        let Some(block_command) = context_block_ids
-            .iter()
-            .find_map(|id| args.terminal_model.block_list().block_with_id(id))
-            .map(|block| truncated_command_for_block(&block.command_to_string()))
-        else {
-            return false;
-        };
-
-        if context_block_ids.len() == 1 {
-            message.append_text(format!(" with `{}` attached", block_command).as_str());
-        } else {
-            let text = if context_block_ids.len() == 2 {
-                format!(" with `{}` and 1 other command attached", block_command)
-            } else {
-                format!(
-                    " with `{}` and {} other commands attached",
-                    block_command,
-                    context_block_ids.len().saturating_sub(1)
-                )
-            };
-            message.append_text(text.as_str());
-        }
+        message.append_text(&format!(
+            " · {}",
+            attached_blocks_label(context_block_ids.len())
+        ));
 
         true
     }
