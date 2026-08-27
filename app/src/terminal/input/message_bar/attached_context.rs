@@ -1,6 +1,5 @@
 //! Shared message producers for displaying attached blocks/text context.
 
-use warp_core::features::FeatureFlag;
 use warpui::keymap::Keystroke;
 
 use crate::ai::blocklist::agent_view::{AgentMessageBarMouseStates, AgentViewController};
@@ -28,12 +27,6 @@ pub struct AttachedBlocksMessageProducer;
 
 impl<Args: AttachedContextArgs + Copy> MessageProvider<Args> for AttachedBlocksMessageProducer {
     fn produce_message(&self, args: Args) -> Option<Message> {
-        // When AgentViewBlockContext is enabled, user-executed blocks are auto-attached
-        // as context, so we don't need to show this message.
-        if FeatureFlag::AgentViewBlockContext.is_enabled() {
-            return None;
-        }
-
         // In the agent view, only show the attached context message if in AI mode.
         if args.agent_view_controller().is_active()
             && !args.input_buffer_model().current_value().is_empty()
@@ -42,6 +35,7 @@ impl<Args: AttachedContextArgs + Copy> MessageProvider<Args> for AttachedBlocksM
             return None;
         }
 
+        // Explicit selections need confirmation even when other blocks are auto-attached.
         let context_block_ids = args.context_model().pending_context_block_ids();
         if context_block_ids.is_empty() {
             return None;

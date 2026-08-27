@@ -46,6 +46,35 @@ fn sends_attached_terminal_context_to_the_model() {
 }
 
 #[test]
+fn smash_paperclip_output_survives_history_and_reaches_each_provider() {
+    let block = super::super::convert_conversation::convert_executed_shell_command(
+        api::ExecutedShellCommand {
+            command: "printf attachment-check".to_owned(),
+            output: "SMASH_PAPERCLIP_OUTPUT_827".to_owned(),
+            command_id: "paperclip_block".to_owned(),
+            ..Default::default()
+        },
+    );
+    let mut input = query("Explain the attached output");
+    if let AIAgentInput::UserQuery { context, .. } = &mut input {
+        *context = Arc::from([AIAgentContext::Block(Box::new(block))]);
+    }
+    let task = saved_task(transcript::input_messages(&[input], "task", "first").unwrap());
+    let followup = transcript::input_messages(&[query("Explain further")], "task", "next").unwrap();
+    let messages =
+        transcript::model_messages(task.messages.iter().chain(&followup), &HashMap::new());
+    for payload in [
+        serde_json::to_string(&messages).unwrap(),
+        serde_json::to_string(&ollama_chat_messages(&messages)).unwrap(),
+        serde_json::to_string(&chat_completion_messages(&messages)).unwrap(),
+    ] {
+        assert!(payload.contains("SMASH_PAPERCLIP_OUTPUT_827"));
+        assert!(payload.contains("printf attachment-check"));
+        assert!(payload.contains("Explain further"));
+    }
+}
+
+#[test]
 fn saved_transcript_keeps_prompts_attachments_tool_results_and_followups() {
     let mut first = query("What does this output mean?");
     if let AIAgentInput::UserQuery {

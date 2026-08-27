@@ -1094,3 +1094,7 @@ fn figma_chip(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "agent_message_bar_tests.rs"]
+mod tests;
