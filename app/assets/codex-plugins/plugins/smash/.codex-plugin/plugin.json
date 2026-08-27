@@ -1,0 +1,21 @@
+{
+  "name": "smash",
+  "version": "1.0.0",
+  "description": "Local Codex session and notification integration for Smash terminal.",
+  "author": {
+    "name": "Smash",
+    "url": "https://github.com/cobraprojects/smash"
+  },
+  "homepage": "https://github.com/cobraprojects/smash",
+  "interface": {
+    "displayName": "Smash",
+    "shortDescription": "Codex notifications in Smash terminal.",
+    "longDescription": "Reports session activity, permission requests and completed turns to the hosting Smash terminal. No account or network service is needed.",
+    "developerName": "Smash",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Help me use Codex notifications in Smash.",
+    "composerIcon": "./assets/smash.svg",
+    "logo": "./assets/smash.svg"
+  }
+}

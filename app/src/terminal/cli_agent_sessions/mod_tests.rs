@@ -9,6 +9,14 @@ use crate::ai::blocklist::{InputConfig, InputType};
 use crate::terminal::CLIAgent;
 
 #[test]
+fn smash_and_legacy_notification_titles_are_supported() {
+    let body = r#"{"v":1,"agent":"codex","event":"session_start","session_id":"test","plugin_version":"1.0.0"}"#;
+    assert!(parse_event(Some("smash://cli-agent"), body).is_some());
+    assert!(parse_event(Some("warp://cli-agent"), body).is_some());
+    assert!(parse_event(Some("other://cli-agent"), body).is_none());
+}
+
+#[test]
 fn parse_stop_notification() {
     let body = r#"{"v":1,"agent":"claude","event":"stop","session_id":"abc","cwd":"/tmp/proj","project":"proj","query":"write a haiku","response":"Memory is safe","transcript_path":"/tmp/t.jsonl"}"#;
     let notif = parse_event(Some("warp://cli-agent"), body).unwrap();

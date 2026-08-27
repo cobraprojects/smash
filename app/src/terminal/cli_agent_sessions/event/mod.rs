@@ -1,7 +1,9 @@
 mod v1;
 
 use serde::Deserialize;
+#[cfg(test)]
 pub use warp_core::cli_agent_protocol::CLI_AGENT_NOTIFICATION_SENTINEL;
+pub use warp_core::cli_agent_protocol::is_cli_agent_notification;
 use warp_errors::report_error;
 
 use crate::terminal::CLIAgent;
@@ -69,8 +71,8 @@ pub struct CLIAgentEvent {
 #[cfg_attr(not(feature = "local_tty"), allow(dead_code))]
 const VERSIONED_PARSERS: &[EventParser] = &[v1::parse];
 
-/// The current CLI agent protocol version this build of Warp supports.
-/// Exported as the `WARP_CLI_AGENT_PROTOCOL_VERSION` env var on the PTY
+/// The current CLI agent protocol version this build of Smash supports.
+/// Exported as the `SMASH_CLI_AGENT_PROTOCOL_VERSION` env var on the PTY
 /// so plugins can negotiate a compatible payload format.
 #[cfg_attr(not(feature = "local_tty"), allow(dead_code))]
 pub const fn current_protocol_version() -> u32 {
@@ -81,7 +83,7 @@ pub const fn current_protocol_version() -> u32 {
 /// Dispatches to the correct version-specific parser based on the `"v"` field. Returns `None`
 /// if the title doesn't match the sentinel, the body isn't valid JSON, or the version is unsupported.
 pub fn parse_event(title: Option<&str>, body: &str) -> Option<CLIAgentEvent> {
-    if title? != CLI_AGENT_NOTIFICATION_SENTINEL {
+    if !is_cli_agent_notification(title) {
         return None;
     }
 
@@ -93,7 +95,7 @@ pub fn parse_event(title: Option<&str>, body: &str) -> Option<CLIAgentEvent> {
         Some(parser) => parser(body),
         None => {
             report_error!(
-                "Received CLI agent event with unsupported schema version. The CLI agent plugin or Warp may need to be updated.",
+                "Received CLI agent event with unsupported schema version. The CLI agent plugin or Smash may need to be updated.",
                 extra: { "version" => %version }
             );
             None

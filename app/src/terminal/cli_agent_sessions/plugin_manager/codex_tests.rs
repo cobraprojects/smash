@@ -45,7 +45,7 @@ fn minimum_version() {
     let _guard = FeatureFlag::CodexPlugin.override_enabled(true);
     assert_eq!(
         CodexPluginManager::new(None, None, None).minimum_plugin_version(),
-        "0.4.0"
+        "1.0.0"
     );
 }
 
@@ -64,11 +64,11 @@ fn install_instructions_has_marketplace_and_plugin_add_steps() {
     let instructions = CodexPluginManager::new(None, None, None).install_instructions();
     assert_eq!(
         instructions.steps[0].command,
-        "codex plugin marketplace add warpdotdev/codex-warp"
+        "codex plugin marketplace add \"${CODEX_HOME:-$HOME/.codex}/smash-integration\""
     );
     assert_eq!(
         instructions.steps[1].command,
-        "codex plugin add warp@codex-warp"
+        "codex plugin add smash@smash"
     );
     assert_eq!(instructions.steps.len(), 2);
     assert!(!instructions.title.is_empty());
@@ -80,11 +80,11 @@ fn update_instructions_has_marketplace_and_plugin_add_steps() {
     let instructions = CodexPluginManager::new(None, None, None).update_instructions();
     assert_eq!(
         instructions.steps[0].command,
-        "codex plugin marketplace upgrade codex-warp"
+        "codex plugin marketplace add \"${CODEX_HOME:-$HOME/.codex}/smash-integration\""
     );
     assert_eq!(
         instructions.steps[1].command,
-        "codex plugin add warp@codex-warp"
+        "codex plugin add smash@smash"
     );
     assert_eq!(instructions.steps.len(), 2);
     assert!(!instructions.title.is_empty());
@@ -151,6 +151,47 @@ fn not_installed_when_config_invalid() {
     fs::write(dir.path().join("config.toml"), "not toml").unwrap();
 
     assert!(!super::check_installed(dir.path()));
+}
+
+#[test]
+#[serial_test::serial]
+fn legacy_plugin_is_offered_a_migration() {
+    let _guard = FeatureFlag::CodexPlugin.override_enabled(true);
+    let dir = tempfile::tempdir().unwrap();
+    write_plugin_config(dir.path(), super::LEGACY_PLUGIN_KEY, true);
+    let original = std::env::var_os("CODEX_HOME");
+    unsafe { std::env::set_var("CODEX_HOME", dir.path()) };
+    let manager = CodexPluginManager::new(None, None, None);
+    let installed = manager.is_installed();
+    let needs_update = manager.needs_update();
+    unsafe {
+        match original {
+            Some(value) => std::env::set_var("CODEX_HOME", value),
+            None => std::env::remove_var("CODEX_HOME"),
+        }
+    }
+    assert!(installed);
+    assert!(needs_update);
+    assert!(!super::check_installed(dir.path()));
+}
+
+#[test]
+fn migration_cleanup_only_targets_the_legacy_plugin() {
+    let dir = tempfile::tempdir().unwrap();
+    write_plugin_config(dir.path(), super::PLUGIN_KEY, true);
+    assert!(!super::plugin_is_configured(
+        dir.path(),
+        super::LEGACY_PLUGIN_KEY
+    ));
+    write_plugin_config(dir.path(), super::LEGACY_PLUGIN_KEY, false);
+    assert!(super::plugin_is_configured(
+        dir.path(),
+        super::LEGACY_PLUGIN_KEY
+    ));
+    assert!(!super::check_plugin_enabled(
+        dir.path(),
+        super::LEGACY_PLUGIN_KEY
+    ));
 }
 
 #[test]
@@ -386,7 +427,11 @@ fn does_not_need_update_via_trait_when_version_current() {
     let _guard = FeatureFlag::CodexPlugin.override_enabled(true);
     let dir = tempfile::tempdir().unwrap();
     write_plugin_config(dir.path(), super::PLUGIN_KEY, true);
-    write_cache_manifest(dir.path(), super::PLUGIN_NAME, "0.4.0");
+    write_cache_manifest(
+        dir.path(),
+        super::PLUGIN_NAME,
+        super::MINIMUM_PLUGIN_VERSION,
+    );
 
     // TODO: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("CODEX_HOME", dir.path()) };
@@ -431,7 +476,7 @@ fn does_not_need_update_when_not_enabled() {
 
 #[test]
 #[serial_test::serial]
-fn does_not_need_update_for_non_git_marketplace_override() {
+fn bundled_marketplace_is_not_a_developer_override() {
     let _guard = FeatureFlag::CodexPlugin.override_enabled(true);
     let dir = tempfile::tempdir().unwrap();
     write_marketplace_config(dir.path(), "directory");
@@ -444,7 +489,7 @@ fn does_not_need_update_for_non_git_marketplace_override() {
     unsafe { std::env::remove_var("CODEX_HOME") };
 
     assert!(!result);
-    assert!(has_override);
+    assert!(!has_override);
 }
 
 fn write_plugin_config(dir: &Path, plugin_key: &str, enabled: bool) {
@@ -492,7 +537,11 @@ fn write_cache_manifest_json(
     let manifest_dir = dir
         .join("plugins")
         .join("cache")
-        .join("codex-warp")
+        .join(if plugin_name == super::PLATFORM_PLUGIN_NAME {
+            super::PLATFORM_MARKETPLACE_NAME
+        } else {
+            super::MARKETPLACE_NAME
+        })
         .join(plugin_name)
         .join(version_dir)
         .join(".codex-plugin");

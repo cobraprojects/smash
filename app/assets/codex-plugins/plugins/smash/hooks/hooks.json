@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "bash \"${PLUGIN_ROOT}/scripts/notify.sh\" session_start" }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "bash \"${PLUGIN_ROOT}/scripts/notify.sh\" prompt_submit" }] }],
+    "PermissionRequest": [{ "hooks": [{ "type": "command", "command": "bash \"${PLUGIN_ROOT}/scripts/notify.sh\" permission_request" }] }],
+    "PostToolUse": [{ "hooks": [{ "type": "command", "command": "bash \"${PLUGIN_ROOT}/scripts/notify.sh\" tool_complete" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "bash \"${PLUGIN_ROOT}/scripts/notify.sh\" stop" }] }]
+  }
+}

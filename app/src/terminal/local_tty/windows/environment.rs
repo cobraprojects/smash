@@ -4,7 +4,10 @@ use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 use itertools::Itertools;
 use warp_core::channel::ChannelState;
-use warp_core::cli_agent_protocol::{WARP_CLI_AGENT_PROTOCOL_VERSION_ENV, WARP_CLIENT_VERSION_ENV};
+use warp_core::cli_agent_protocol::{
+    SMASH_CLI_AGENT_PROTOCOL_VERSION_ENV, SMASH_CLIENT_VERSION_ENV,
+    WARP_CLI_AGENT_PROTOCOL_VERSION_ENV, WARP_CLIENT_VERSION_ENV,
+};
 use warp_core::features::FeatureFlag;
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use windows::core::{HSTRING, PCWSTR};
@@ -127,6 +130,13 @@ pub(super) fn get_shell_environment_variables(options: &PtyOptions) -> Vec<u16> 
 
     let client_version = ChannelState::app_version().unwrap_or("local");
     env.insert(
+        map_key(SMASH_CLIENT_VERSION_ENV.into()),
+        EnvEntry {
+            preferred_key: SMASH_CLIENT_VERSION_ENV.into(),
+            value: client_version.into(),
+        },
+    );
+    env.insert(
         map_key(WARP_CLIENT_VERSION_ENV.into()),
         EnvEntry {
             preferred_key: WARP_CLIENT_VERSION_ENV.into(),
@@ -135,6 +145,13 @@ pub(super) fn get_shell_environment_variables(options: &PtyOptions) -> Vec<u16> 
     );
 
     if FeatureFlag::HOANotifications.is_enabled() {
+        env.insert(
+            map_key(SMASH_CLI_AGENT_PROTOCOL_VERSION_ENV.into()),
+            EnvEntry {
+                preferred_key: SMASH_CLI_AGENT_PROTOCOL_VERSION_ENV.into(),
+                value: current_protocol_version().to_string().into(),
+            },
+        );
         env.insert(
             map_key(WARP_CLI_AGENT_PROTOCOL_VERSION_ENV.into()),
             EnvEntry {
@@ -223,6 +240,7 @@ fn wsl_env_allowlist(include_initial_working_dir: bool) -> OsString {
         format!("{IS_LOCAL_SESSION_NAME}/u"),
         format!("{SSH_SOCKET_DIR}/u"),
         format!("{WARP_CLIENT_VERSION_ENV}/u"),
+        format!("{SMASH_CLIENT_VERSION_ENV}/u"),
         format!("{TERMINAL_SESSION_UUID_ENV}/u"),
         format!("{FOCUS_URL_ENV}/u"),
         format!("{PROMPT_NODE_VERSION_ENABLED_NAME}/u"),
@@ -230,6 +248,7 @@ fn wsl_env_allowlist(include_initial_working_dir: bool) -> OsString {
 
     if FeatureFlag::HOANotifications.is_enabled() {
         entries.push(format!("{WARP_CLI_AGENT_PROTOCOL_VERSION_ENV}/u"));
+        entries.push(format!("{SMASH_CLI_AGENT_PROTOCOL_VERSION_ENV}/u"));
     }
 
     if include_initial_working_dir {

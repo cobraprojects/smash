@@ -4,6 +4,17 @@ use serde_with::skip_serializing_none;
 /// Sentinel title that identifies structured CLI-agent events sent via OSC 777.
 pub const CLI_AGENT_NOTIFICATION_SENTINEL: &str = "warp://cli-agent";
 
+/// Accept both namespaces so existing third-party integrations keep working.
+pub fn is_cli_agent_notification(title: Option<&str>) -> bool {
+    matches!(
+        title,
+        Some(CLI_AGENT_NOTIFICATION_SENTINEL | "smash://cli-agent")
+    )
+}
+
+pub const SMASH_CLI_AGENT_PROTOCOL_VERSION_ENV: &str = "SMASH_CLI_AGENT_PROTOCOL_VERSION";
+pub const SMASH_CLIENT_VERSION_ENV: &str = "SMASH_CLIENT_VERSION";
+
 /// Schema version emitted by the current CLI-agent notification protocol.
 pub const CLI_AGENT_PROTOCOL_VERSION: u32 = 1;
 
