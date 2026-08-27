@@ -37,7 +37,16 @@ impl AttachedContextArgs for AttachmentArgs<'_> {
 
 #[test]
 fn smash_paperclips_accumulate_blocks_and_show_attachment_count() {
-    App::test((), |mut app| async move {
+    check_paperclip_attachments("Explain these commands");
+}
+
+#[test]
+fn smash_paperclips_accumulate_with_an_empty_input() {
+    check_paperclip_attachments("");
+}
+
+fn check_paperclip_attachments(prompt: &'static str) {
+    App::test((), move |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
         let _agent_view = FeatureFlag::AgentView.override_enabled(true);
         let _agent_mode = FeatureFlag::AgentMode.override_enabled(true);
@@ -61,7 +70,7 @@ fn smash_paperclips_accumulate_blocks_and_show_attachment_count() {
                 .collect::<Vec<_>>();
             drop(model);
             view.input().update(ctx, |input, ctx| {
-                input.replace_buffer_content("Explain these commands", ctx);
+                input.replace_buffer_content(prompt, ctx);
             });
             blocks
         });
@@ -153,10 +162,7 @@ fn smash_paperclips_accumulate_blocks_and_show_attachment_count() {
                     "attachment status must not replace the existing helpers"
                 );
             }
-            assert_eq!(
-                bar.input_buffer_model.as_ref(ctx).current_value(),
-                "Explain these commands"
-            );
+            assert_eq!(bar.input_buffer_model.as_ref(ctx).current_value(), prompt);
         });
         terminal.update(&mut app, |view, ctx| {
             view.input()
