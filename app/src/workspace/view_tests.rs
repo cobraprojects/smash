@@ -4020,6 +4020,67 @@ fn test_tab_mru_order() {
 }
 
 #[test]
+fn test_smash_last_window_close_preserves_multiple_sessions() {
+    let _groups = FeatureFlag::GroupedTabs.override_enabled(true);
+    let _vertical = FeatureFlag::VerticalTabs.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            TabSettings::handle(ctx).update(ctx, |settings, ctx| {
+                settings.use_vertical_tabs.set_value(true, ctx).unwrap();
+            });
+            workspace.add_terminal_tab(false, ctx);
+            workspace.handle_action(&WorkspaceAction::NewTabGroupFromTab(0), ctx);
+            workspace.handle_action(&WorkspaceAction::NewTabGroupFromTab(1), ctx);
+            workspace.add_terminal_tab(false, ctx);
+            assert_eq!(workspace.tab_groups.len(), 2);
+        });
+
+        let (sender, receiver) = std::sync::mpsc::sync_channel(64);
+        app.update(|ctx| {
+            GeneralSettings::handle(ctx).update(ctx, |settings, ctx| {
+                settings.restore_session.set_value(true, ctx).unwrap();
+            });
+            GlobalResourceHandlesProvider::handle(ctx).update(ctx, |provider, _| {
+                provider.set_model_event_sender_for_test(sender);
+            });
+            ctx.dispatch_global_action("workspace:save_app", &());
+        });
+        let snapshots = || {
+            receiver
+                .try_iter()
+                .filter_map(|event| match event {
+                    crate::persistence::ModelEvent::Snapshot(state) => Some(state),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let saved = snapshots().pop().expect("initial snapshot");
+        assert_eq!(saved.windows.len(), 1);
+        assert_eq!(saved.windows[0].tab_groups.len(), 2);
+        assert_eq!(saved.windows[0].tabs.len(), 3);
+
+        // The close callback unregisters the workspace before close/focus/quit saves run.
+        workspace.update(&mut app, |workspace, ctx| workspace.on_window_closed(ctx));
+        app.update(|ctx| {
+            for _ in 0..3 {
+                ctx.dispatch_global_action("workspace:save_app", &());
+            }
+        });
+        assert!(
+            snapshots().iter().all(|state| !state.windows.is_empty()),
+            "closing the last window must not overwrite its saved sessions with an empty layout"
+        );
+        let restored = restored_workspace(&mut app, saved.windows[0].clone());
+        restored.read(&app, |workspace, _| {
+            assert_eq!(workspace.tab_groups.len(), 2);
+            assert_eq!(workspace.tab_count(), 3);
+        });
+    });
+}
+
+#[test]
 fn test_smash_session_top_tab_drag_keeps_session_membership() {
     let _groups = FeatureFlag::GroupedTabs.override_enabled(true);
     let _vertical = FeatureFlag::VerticalTabs.override_enabled(true);

@@ -36,6 +36,8 @@ pub use sqlite::database_file_path_for_current_scope;
 pub use sqlite::database_file_path_for_scope;
 #[cfg(any(feature = "local_fs", feature = "integration_tests"))]
 pub use sqlite::establish_ro_connection;
+#[cfg(feature = "local_fs")]
+pub(crate) use sqlite::read_saved_app_state;
 use uuid::Uuid;
 use warp_core::command::ExitCode;
 use warp_errors::report_error;

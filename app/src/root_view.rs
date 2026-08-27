@@ -99,6 +99,7 @@ use crate::terminal::shell::ShellType;
 use crate::terminal::view::{TerminalAction, cell_size_and_padding};
 use crate::themes::onboarding_theme_picker_themes;
 use crate::themes::theme::{AnsiColorIdentifier, Blend, Fill, ThemeKind, WarpThemeConfig};
+use crate::undo_close::UndoCloseStack;
 use crate::uri::{OpenMCPSettingsArgs, OpenSettingsArgs, url_reports_checkout_success};
 use crate::util::bindings::{self, is_binding_pty_compliant};
 use crate::util::traffic_lights::{TrafficLightData, TrafficLightMouseStates, traffic_light_data};
@@ -1264,6 +1265,38 @@ pub(crate) fn open_new_window_get_handles(
 /// Opens a new window.
 fn open_new(_: &(), ctx: &mut AppContext) {
     open_new_window_get_handles(None, ctx);
+}
+
+pub(crate) fn open_on_reactivation(ctx: &mut AppContext) {
+    if ChannelState::channel() == Channel::Oss
+        && *GeneralSettings::as_ref(ctx).restore_session
+        && ctx.window_ids().next().is_none()
+    {
+        let reopened =
+            UndoCloseStack::handle(ctx).update(ctx, |stack, ctx| stack.reopen_last_window(ctx));
+        if reopened {
+            return;
+        }
+
+        // Undo-close expires independently of session restoration. Reload the saved layout
+        // after that grace period without loading unrelated account or cloud data.
+        #[cfg(feature = "local_fs")]
+        match crate::persistence::read_saved_app_state() {
+            Ok(app_state) => {
+                open_from_restored(
+                    &OpenFromRestoredArg {
+                        app_state: Some(app_state),
+                    },
+                    ctx,
+                );
+                if ctx.window_ids().next().is_some() {
+                    return;
+                }
+            }
+            Err(error) => report_error!(error.context("Failed to restore Smash windows")),
+        }
+    }
+    open_new(&(), ctx);
 }
 
 /// Opens a new window with a specific shell

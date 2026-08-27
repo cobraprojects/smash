@@ -251,6 +251,23 @@ impl UndoCloseStack {
             return;
         };
 
+        Self::restore_item(closed_item, ctx);
+    }
+
+    pub(crate) fn reopen_last_window(&mut self, ctx: &mut AppContext) -> bool {
+        let Some(index) = self
+            .stack
+            .iter()
+            .rposition(|item| matches!(item.closed_item, ClosedItem::Window(_)))
+        else {
+            return false;
+        };
+        let UndoData { closed_item, .. } = self.stack.remove(index);
+        Self::restore_item(closed_item, ctx);
+        true
+    }
+
+    fn restore_item(closed_item: ClosedItem, ctx: &mut AppContext) {
         match closed_item {
             ClosedItem::Window(data) => {
                 send_telemetry_from_app_ctx!(

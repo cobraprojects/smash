@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use ::settings::ToggleableSetting;
+use warp_core::channel::{Channel, ChannelState};
 use warp_core::execution_mode::AppExecutionMode;
 use warp_errors::report_error;
 use warp_graphql::mutations::create_anonymous_user::AnonymousUserType;
@@ -161,6 +162,11 @@ fn save_app(_: &(), ctx: &mut AppContext) {
 
     // Only compute the app state if we're definitely going to use it.
     let app_state = get_app_state(ctx);
+    // On macOS the app remains running after its last window closes. Keep that window's
+    // sessions for both Dock reactivation and the next launch, including later quit saves.
+    if ChannelState::channel() == Channel::Oss && app_state.windows.is_empty() {
+        return;
+    }
     let event = ModelEvent::Snapshot(app_state);
 
     if let Err(err) = model_event_sender.send(event) {

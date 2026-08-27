@@ -208,7 +208,7 @@ use ::settings::{Setting, ToggleableSetting};
 use anyhow::Context;
 use anyhow::{Result, anyhow};
 use appearance::{Appearance, AppearanceManager};
-use channel::ChannelState;
+use channel::{Channel, ChannelState};
 use interval_timer::IntervalTimer;
 use itertools::Itertools;
 #[cfg(feature = "integration_tests")]
@@ -2750,6 +2750,10 @@ pub(crate) fn app_callbacks(
                 return ApproveTerminateResult::Cancel;
             }
 
+            if ChannelState::channel() == Channel::Oss {
+                ctx.dispatch_global_action("workspace:save_app", &());
+            }
+
             let summary = UnsavedStateSummary::for_window(window_id, ctx);
 
             send_telemetry_from_app_ctx!(
@@ -2876,7 +2880,7 @@ pub(crate) fn app_callbacks(
             // e.g. clicking on the Dock icon. It is NOT called from the New Window
             // menu item.
             App::record_last_active_timestamp();
-            ctx.dispatch_global_action("root_view:open_new", &());
+            root_view::open_on_reactivation(ctx);
             ctx.dispatch_global_action("workspace:save_app", &());
         })),
         on_open_urls: Some(Box::new(move |urls, ctx| {

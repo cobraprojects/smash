@@ -434,6 +434,70 @@ fn test_terminal_window_snapshot(vertical_tabs_panel_open: bool) -> WindowSnapsh
 }
 
 #[test]
+fn test_smash_reload_multiple_sessions_from_read_only_database() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let path = tempdir.path().join("smash.sqlite");
+    let mut conn = setup_database(&path).unwrap();
+    let mut window = test_terminal_window_snapshot(true);
+    let groups = [TabGroupId::new(), TabGroupId::new()];
+    window.tab_groups = groups
+        .iter()
+        .enumerate()
+        .map(|(index, id)| TabGroupSnapshot {
+            id: *id,
+            name: Some(format!("Session {index}")),
+            color: SelectedTabColor::default(),
+            collapsed: false,
+            pinned: false,
+            active_tab_index: 1,
+        })
+        .collect();
+    window.tabs = (0..4)
+        .map(|index| {
+            let mut tab = window.tabs[0].clone();
+            tab.group_id = Some(groups[index / 2]);
+            tab.custom_title = Some(format!("Tab {index}"));
+            if let PaneNodeSnapshot::Leaf(LeafSnapshot {
+                contents: LeafContents::Terminal(terminal),
+                ..
+            }) = &mut tab.root
+            {
+                terminal.uuid = vec![index as u8];
+                terminal.cwd = Some(format!("/tmp/session-{index}"));
+            }
+            tab
+        })
+        .collect();
+    window.active_tab_index = 3;
+    save_app_state(
+        &mut conn,
+        &AppState {
+            windows: vec![window],
+            active_window_index: Some(0),
+            block_lists: Default::default(),
+            running_mcp_servers: vec![],
+        },
+    )
+    .unwrap();
+
+    let mut reader = super::establish_ro_connection(&path.to_string_lossy()).unwrap();
+    let restored = super::read_app_state(&mut reader).unwrap();
+    assert_eq!(restored.windows.len(), 1);
+    let window = &restored.windows[0];
+    assert_eq!(window.tabs.len(), 4);
+    assert_eq!(window.tab_groups.len(), 2);
+    assert_eq!(window.active_tab_index, 3);
+    assert_eq!(window.vertical_tabs_panel_width, Some(428.));
+    for (index, tab) in window.tabs.iter().enumerate() {
+        let group = &window.tab_groups[index / 2];
+        assert_eq!(tab.group_id, Some(group.id));
+        assert_eq!(group.name, Some(format!("Session {}", index / 2)));
+        assert_eq!(group.active_tab_index, 1);
+        assert_eq!(tab.custom_title, Some(format!("Tab {index}")));
+    }
+}
+
+#[test]
 fn test_sqlite_round_trips_vertical_tabs_panel_open() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("warp.sqlite");
