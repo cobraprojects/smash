@@ -1,10 +1,11 @@
+use prost::Message;
+
 use super::*;
-use crate::ai::agent::AIAgentContext;
 use crate::ai::agent::task::TaskId;
 use crate::ai::agent::{
-    AIAgentActionResult, AIAgentAttachment, RequestCommandOutputResult, UserQueryMode,
+    AIAgentActionResult, AIAgentAttachment, AIAgentContext, RequestCommandOutputResult,
+    UserQueryMode,
 };
-use prost::Message;
 
 fn query(text: &str) -> AIAgentInput {
     AIAgentInput::UserQuery {

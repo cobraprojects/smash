@@ -11,6 +11,7 @@ use serde_json::{Value, json};
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_ENDPOINT: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_ENDPOINT: &str = "https://auth.openai.com/oauth/token";
+const MODELS_ENDPOINT: &str = "https://chatgpt.com/backend-api/codex/models";
 const RESPONSES_ENDPOINT: &str = "https://chatgpt.com/backend-api/codex/responses";
 const KEYCHAIN_SERVICE: &str = "app.smash.Smash.chatgpt";
 const KEYCHAIN_ACCOUNT: &str = "oauth";
@@ -32,6 +33,30 @@ struct TokenResponse {
     refresh_token: String,
     expires_in: Option<u64>,
     id_token: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ChatGPTModel {
+    pub id: String,
+    pub display_name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelsResponse {
+    models: Vec<ModelResponseEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelResponseEntry {
+    slug: String,
+    display_name: String,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    priority: i32,
+    #[serde(default)]
+    visibility: Option<String>,
 }
 
 #[derive(Default)]
@@ -159,6 +184,78 @@ impl OAuthAttempt {
 
 pub(crate) fn is_connected() -> bool {
     cached_auth().is_some()
+}
+
+pub(crate) async fn fetch_models() -> anyhow::Result<Vec<ChatGPTModel>> {
+    let mut auth = current_auth().await?;
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .build()
+        .context("failed to create the Smash ChatGPT client")?;
+
+    for attempt in 0..2 {
+        let response = client
+            .get(MODELS_ENDPOINT)
+            // Smash is not a Codex client. Sending Smash's app version here would make the
+            // backend hide models that require a newer Codex version.
+            .query(&[("client_version", "")])
+            .bearer_auth(&auth.access)
+            .header(
+                "ChatGPT-Account-Id",
+                auth.account_id.as_deref().unwrap_or(""),
+            )
+            .header("accept", "application/json")
+            .header("originator", "smash")
+            .send()
+            .await
+            .context("could not fetch ChatGPT models")?;
+
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED && attempt == 0 {
+            auth = refresh_auth(&auth).await?;
+            continue;
+        }
+
+        let status = response.status();
+        let text = response
+            .text()
+            .await
+            .context("failed to read the ChatGPT model catalog")?;
+        if !status.is_success() {
+            return Err(anyhow!("ChatGPT model discovery returned {status}"));
+        }
+        return parse_model_catalog(&text);
+    }
+
+    Err(anyhow!("ChatGPT authentication failed"))
+}
+
+fn parse_model_catalog(json: &str) -> anyhow::Result<Vec<ChatGPTModel>> {
+    let mut models = serde_json::from_str::<ModelsResponse>(json)
+        .context("ChatGPT returned a malformed model catalog")?
+        .models;
+    models.sort_by_key(|model| model.priority);
+    Ok(models
+        .into_iter()
+        .filter(|model| {
+            !model.slug.is_empty()
+                && model
+                    .visibility
+                    .as_deref()
+                    .is_none_or(|visibility| visibility == "list")
+        })
+        .map(|model| {
+            let display_name = if model.display_name.is_empty() {
+                model.slug.clone()
+            } else {
+                model.display_name
+            };
+            ChatGPTModel {
+                id: model.slug,
+                display_name,
+                description: model.description,
+            }
+        })
+        .collect())
 }
 
 pub(crate) async fn send_responses(body: &Value) -> anyhow::Result<Vec<Value>> {
@@ -447,5 +544,39 @@ mod tests {
         assert_eq!(output[0]["text"], "hello");
         assert_eq!(output[1]["id"], "call_1");
         assert_eq!(output[1]["input"]["command"], "pwd");
+    }
+
+    #[test]
+    fn parses_picker_visible_models_in_server_priority_order() {
+        let catalog = r#"{
+            "models": [
+                {
+                    "slug": "gpt-5.6-sol",
+                    "display_name": "GPT-5.6 Sol",
+                    "description": "Everyday work",
+                    "priority": 20,
+                    "visibility": "list"
+                },
+                {
+                    "slug": "gpt-6-astra",
+                    "display_name": "GPT-6 Astra",
+                    "description": "Complex work",
+                    "priority": 10,
+                    "visibility": "list"
+                },
+                {
+                    "slug": "gpt-internal",
+                    "display_name": "Internal",
+                    "priority": 0,
+                    "visibility": "hide"
+                }
+            ]
+        }"#;
+
+        let models = parse_model_catalog(catalog).unwrap();
+        assert_eq!(models.len(), 2);
+        assert_eq!(models[0].id, "gpt-6-astra");
+        assert_eq!(models[0].display_name, "GPT-6 Astra");
+        assert_eq!(models[1].id, "gpt-5.6-sol");
     }
 }

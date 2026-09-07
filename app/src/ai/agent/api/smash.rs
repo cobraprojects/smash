@@ -144,15 +144,14 @@ fn normalize_model(model: &str) -> String {
     if model.starts_with("lmstudio:") {
         return model.to_owned();
     }
-    match model {
-        "gpt-5.4" | "claude-gpt-5.4" => "gpt-5.4",
-        "gpt-5.5" | "claude-gpt-5.5" => "gpt-5.5",
-        "gpt-5.6-luna" | "claude-gpt-5.6-luna" => "gpt-5.6-luna",
-        "gpt-5.6-terra" | "claude-gpt-5.6-terra" => "gpt-5.6-terra",
-        "gpt-5.6-sol" | "claude-gpt-5.6-sol" => "gpt-5.6-sol",
-        _ => DEFAULT_MODEL,
+    if let Some(model) = model.strip_prefix("claude-gpt-") {
+        return format!("gpt-{model}");
     }
-    .to_owned()
+    if model.starts_with("oz-") || model.is_empty() {
+        DEFAULT_MODEL.to_owned()
+    } else {
+        model.to_owned()
+    }
 }
 
 async fn send_provider_request(
@@ -815,10 +814,10 @@ fn stream_finished() -> api::ResponseEvent {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ai::skills::{ParsedSkill, SkillProvider, SkillScope};
     use warp_util::local_or_remote_path::LocalOrRemotePath;
 
+    use super::*;
     use crate::ai::agent::task::TaskId;
     use crate::ai::agent::{AIAgentActionResult, InvokeSkillUserQuery, MCPServer};
 
@@ -834,8 +833,9 @@ mod tests {
     }
 
     #[test]
-    fn only_supported_chatgpt_models_are_forwarded() {
+    fn discovered_chatgpt_models_are_forwarded_without_a_whitelist() {
         assert_eq!(normalize_model("gpt-5.6-sol"), "gpt-5.6-sol");
+        assert_eq!(normalize_model("gpt-6-astra"), "gpt-6-astra");
         assert_eq!(normalize_model("oz-agent"), DEFAULT_MODEL);
     }
 

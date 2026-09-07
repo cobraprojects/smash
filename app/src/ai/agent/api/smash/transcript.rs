@@ -1,8 +1,9 @@
 //! The task transcript is the single source of conversation history, including after restart,
 //! fork, or rewind. No process-global provider cache is needed.
+use prost_reflect::{DynamicMessage, ReflectMessage};
+
 use super::super::convert_to::{convert_context, convert_input};
 use super::*;
-use prost_reflect::{DynamicMessage, ReflectMessage};
 
 fn proto_json(message: &impl ReflectMessage) -> Value {
     serde_json::to_value(message.transcode_to_dynamic()).expect("protobuf JSON serialization")

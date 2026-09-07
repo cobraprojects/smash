@@ -17,6 +17,8 @@ use warpui::{AppContext, Entity, EntityId, ModelContext, SingletonEntity};
 
 use super::custom_model_routers::{self, CustomModelRouter, ModelConfigError};
 use super::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(not(target_family = "wasm"))]
+use super::smash_chatgpt;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::{AuthManager, AuthManagerEvent};
 use crate::network::{NetworkStatus, NetworkStatusEvent, NetworkStatusKind};
@@ -764,19 +766,19 @@ fn smash_model_info(id: &str, display_name: &str, provider: LLMProvider) -> LLMI
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
+fn smash_chatgpt_model_info(model: smash_chatgpt::ChatGPTModel) -> LLMInfo {
+    let mut info = smash_model_info(&model.id, &model.display_name, LLMProvider::OpenAI);
+    info.description = model.description;
+    info
+}
+
 fn smash_models_by_feature() -> ModelsByFeature {
-    let choices = vec![
-        smash_model_info("gpt-5.6-sol", "GPT-5.6 Sol", LLMProvider::OpenAI),
-        smash_model_info("gpt-5.6-terra", "GPT-5.6 Terra", LLMProvider::OpenAI),
-        smash_model_info("gpt-5.6-luna", "GPT-5.6 Luna", LLMProvider::OpenAI),
-        smash_model_info("gpt-5.5", "GPT-5.5", LLMProvider::OpenAI),
-        smash_model_info("gpt-5.4", "GPT-5.4", LLMProvider::OpenAI),
-        smash_model_info(
-            "ollama:qwen3.5:latest",
-            "Qwen 3.5 (Ollama)",
-            LLMProvider::Unknown,
-        ),
-    ];
+    let choices = vec![smash_model_info(
+        "gpt-5.6-sol",
+        "GPT-5.6 Sol",
+        LLMProvider::OpenAI,
+    )];
     let available = AvailableLLMs {
         default_id: "gpt-5.6-sol".to_owned().into(),
         choices,
@@ -927,6 +929,14 @@ impl LLMPreferences {
         ctx.spawn(
             async move {
                 let client = reqwest::Client::new();
+                #[cfg(not(target_family = "wasm"))]
+                let chatgpt = if smash_chatgpt::is_connected() {
+                    Some(smash_chatgpt::fetch_models().await)
+                } else {
+                    None
+                };
+                #[cfg(target_family = "wasm")]
+                let chatgpt: Option<anyhow::Result<Vec<()>>> = None;
                 let ollama = client
                     .get(ollama_models_url)
                     .send()
@@ -972,11 +982,29 @@ impl LLMPreferences {
                         .collect(),
                     None => Vec::new(),
                 };
-                (ollama, lm_studio)
+                (chatgpt, ollama, lm_studio)
             },
-            |me, (ollama, lm_studio), ctx| {
+            |me, (chatgpt, ollama, lm_studio), ctx| {
+                #[cfg(not(target_family = "wasm"))]
+                let mut choices = match chatgpt {
+                    Some(Ok(models)) if !models.is_empty() => models
+                        .into_iter()
+                        .map(smash_chatgpt_model_info)
+                        .collect::<Vec<_>>(),
+                    Some(Err(error)) => {
+                        report_error!(error.context("Failed to fetch ChatGPT models"));
+                        me.models_by_feature
+                            .agent_mode
+                            .choices
+                            .iter()
+                            .filter(|model| model.provider == LLMProvider::OpenAI)
+                            .cloned()
+                            .collect()
+                    }
+                    Some(Ok(_)) | None => smash_models_by_feature().agent_mode.choices,
+                };
+                #[cfg(target_family = "wasm")]
                 let mut choices = smash_models_by_feature().agent_mode.choices;
-                choices.retain(|model| !model.id.as_str().starts_with("ollama:"));
                 choices.extend(ollama.into_iter().map(|model| {
                     smash_model_info(
                         &format!("ollama:{model}"),
@@ -991,8 +1019,19 @@ impl LLMPreferences {
                         LLMProvider::Unknown,
                     )
                 }));
+                let default_id = choices
+                    .iter()
+                    .find(|model| model.id.as_str() == "gpt-5.6-sol")
+                    .or_else(|| {
+                        choices
+                            .iter()
+                            .find(|model| model.provider == LLMProvider::OpenAI)
+                    })
+                    .or_else(|| choices.first())
+                    .map(|model| model.id.clone())
+                    .unwrap_or_else(|| "gpt-5.6-sol".to_owned().into());
                 let available = AvailableLLMs {
-                    default_id: "gpt-5.6-sol".to_owned().into(),
+                    default_id,
                     choices,
                     preferred_codex_model_id: None,
                 };
@@ -1839,6 +1878,7 @@ impl LLMPreferences {
     /// Fetches the latest set of models from the server for the currently logged in user, and updates the model.
     pub fn refresh_authed_models(&self, ctx: &mut ModelContext<Self>) {
         if ChannelState::channel() == Channel::Oss {
+            self.refresh_smash_local_models(ctx);
             return;
         }
         // Don't try to fetch auth'd models if the user is not logged in yet.
@@ -1890,6 +1930,7 @@ impl LLMPreferences {
 
     pub fn refresh_available_models(&self, ctx: &mut ModelContext<Self>) {
         if ChannelState::channel() == Channel::Oss {
+            self.refresh_smash_local_models(ctx);
             return;
         }
         if AuthStateProvider::as_ref(ctx).get().is_logged_in() {

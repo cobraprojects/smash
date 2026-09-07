@@ -3920,6 +3920,11 @@ impl TypedActionView for AISettingsPageView {
                 };
                 ctx.open_url(attempt.authorize_url());
                 ctx.spawn(async move { attempt.finish().await }, |_, result, ctx| {
+                    if result.is_ok() {
+                        LLMPreferences::handle(ctx).update(ctx, |preferences, ctx| {
+                            preferences.refresh_smash_local_models(ctx);
+                        });
+                    }
                     let window_id = ctx.window_id();
                     crate::ToastStack::handle(ctx).update(ctx, |stack, ctx| {
                         let toast = match result {
@@ -3938,6 +3943,9 @@ impl TypedActionView for AISettingsPageView {
             #[cfg(not(target_family = "wasm"))]
             AISettingsPageAction::DisconnectSmashChatGPT => {
                 smash_chatgpt::clear_auth();
+                LLMPreferences::handle(ctx).update(ctx, |preferences, ctx| {
+                    preferences.refresh_smash_local_models(ctx);
+                });
                 ctx.notify();
             }
             #[cfg(not(target_family = "wasm"))]
