@@ -10156,12 +10156,10 @@ impl Workspace {
                     } else {
                         "Move group up"
                     }
+                } else if is_session {
+                    "Move session left"
                 } else {
-                    if is_session {
-                        "Move session left"
-                    } else {
-                        "Move group left"
-                    }
+                    "Move group left"
                 };
                 items.push(
                     MenuItemFields::new(label)
@@ -10176,12 +10174,10 @@ impl Workspace {
                     } else {
                         "Move group down"
                     }
+                } else if is_session {
+                    "Move session right"
                 } else {
-                    if is_session {
-                        "Move session right"
-                    } else {
-                        "Move group right"
-                    }
+                    "Move group right"
                 };
                 items.push(
                     MenuItemFields::new(label)

@@ -1,3 +1,5 @@
+use warpui::App;
+
 use super::*;
 use crate::ai::agent::AIAgentContext;
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
@@ -5,7 +7,6 @@ use crate::terminal::input::message_bar::attached_context::AttachedBlocksMessage
 use crate::test_util::terminal::{
     add_window_with_id_and_terminal, initialize_app_for_terminal_view,
 };
-use warpui::App;
 
 #[derive(Clone, Copy)]
 struct AttachmentArgs<'a> {
@@ -139,7 +140,6 @@ fn check_paperclip_attachments(prompt: &'static str) {
                 3,
                 "reattaching the same block must not duplicate or remove attachments"
             );
-            let model = bar.terminal_model.lock();
             let message = AttachedBlocksMessageProducer
                 .produce_message(AttachmentArgs { bar, ctx })
                 .unwrap();

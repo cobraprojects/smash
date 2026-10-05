@@ -1,6 +1,5 @@
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 macro_rules! asset {
     ($path:literal) => {

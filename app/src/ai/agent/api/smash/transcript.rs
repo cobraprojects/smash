@@ -70,7 +70,7 @@ pub(super) fn input_messages(
                         .iter()
                         .map(|(name, attachment)| (name.clone(), attachment.clone().into()))
                         .collect();
-                    query.mode = Some(user_query_mode.clone().into());
+                    query.mode = Some((*user_query_mode).into());
                 }
                 api::message::Message::UserQuery(query)
             };

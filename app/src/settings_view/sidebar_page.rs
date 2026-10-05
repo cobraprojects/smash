@@ -87,41 +87,39 @@ impl View for SidebarSettingsPageView {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SidebarPageAction {
-    ToggleEnabled,
-    ToggleOpenOnRestore,
-    ToggleDetails,
-    ToggleTabCount,
-    ToggleWorkingDirectory,
-    ToggleGitBranch,
-    ToggleCompactPaths,
+pub enum SidebarPageToggle {
+    Enabled,
+    OpenOnRestore,
+    Details,
+    TabCount,
+    WorkingDirectory,
+    GitBranch,
+    CompactPaths,
 }
 
 impl TypedActionView for SidebarSettingsPageView {
-    type Action = SidebarPageAction;
+    type Action = SidebarPageToggle;
 
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
         TabSettings::handle(ctx).update(ctx, |settings, ctx| {
             let result = match action {
-                SidebarPageAction::ToggleEnabled => {
-                    settings.use_vertical_tabs.toggle_and_save_value(ctx)
-                }
-                SidebarPageAction::ToggleOpenOnRestore => settings
+                SidebarPageToggle::Enabled => settings.use_vertical_tabs.toggle_and_save_value(ctx),
+                SidebarPageToggle::OpenOnRestore => settings
                     .show_vertical_tab_panel_in_restored_windows
                     .toggle_and_save_value(ctx),
-                SidebarPageAction::ToggleDetails => settings
+                SidebarPageToggle::Details => settings
                     .session_sidebar_show_details
                     .toggle_and_save_value(ctx),
-                SidebarPageAction::ToggleTabCount => settings
+                SidebarPageToggle::TabCount => settings
                     .session_sidebar_show_tab_count
                     .toggle_and_save_value(ctx),
-                SidebarPageAction::ToggleWorkingDirectory => settings
+                SidebarPageToggle::WorkingDirectory => settings
                     .session_sidebar_show_working_directory
                     .toggle_and_save_value(ctx),
-                SidebarPageAction::ToggleGitBranch => settings
+                SidebarPageToggle::GitBranch => settings
                     .session_sidebar_show_git_branch
                     .toggle_and_save_value(ctx),
-                SidebarPageAction::ToggleCompactPaths => settings
+                SidebarPageToggle::CompactPaths => settings
                     .session_sidebar_compact_paths
                     .toggle_and_save_value(ctx),
             };
@@ -173,11 +171,11 @@ fn render_switch_row(
     description: &str,
     checked: bool,
     switch_state: SwitchStateHandle,
-    action: SidebarPageAction,
+    action: SidebarPageToggle,
     local_only_state: LocalOnlyIconState,
     appearance: &Appearance,
 ) -> Box<dyn Element> {
-    render_body_item::<SidebarPageAction>(
+    render_body_item::<SidebarPageToggle>(
         title.to_string(),
         None,
         local_only_state,
@@ -235,7 +233,7 @@ sidebar_toggle_widget!(
     "Organize tabs into sessions and show the active session's tabs across the top. Sidebar visibility remains independent.",
     use_vertical_tabs,
     UseVerticalTabs,
-    SidebarPageAction::ToggleEnabled
+    SidebarPageToggle::Enabled
 );
 
 #[derive(Default)]
@@ -269,7 +267,7 @@ impl SettingsWidget for ToggleSidebarVisibilityWidget {
             })
             .finish();
 
-        render_body_item::<SidebarPageAction>(
+        render_body_item::<SidebarPageToggle>(
             "Show or hide sidebar".to_string(),
             None,
             LocalOnlyIconState::Hidden,
@@ -290,7 +288,7 @@ sidebar_toggle_widget!(
     "Open the session sidebar when a saved window is restored. You can still show or hide it at any time.",
     show_vertical_tab_panel_in_restored_windows,
     ShowVerticalTabPanelInRestoredWindows,
-    SidebarPageAction::ToggleOpenOnRestore
+    SidebarPageToggle::OpenOnRestore
 );
 #[derive(Default)]
 struct ShowDetailsWidget {
@@ -315,7 +313,7 @@ impl SettingsWidget for ShowDetailsWidget {
             "Hide tab counts, branches, and working-directory paths beneath session titles.",
             !*TabSettings::as_ref(app).session_sidebar_show_details,
             self.switch_state.clone(),
-            SidebarPageAction::ToggleDetails,
+            SidebarPageToggle::Details,
             local_only::<SessionSidebarShowDetails>(view, app),
             appearance,
         )
@@ -328,7 +326,7 @@ sidebar_toggle_widget!(
     "Display how many tabs belong to each session.",
     session_sidebar_show_tab_count,
     SessionSidebarShowTabCount,
-    SidebarPageAction::ToggleTabCount
+    SidebarPageToggle::TabCount
 );
 sidebar_toggle_widget!(
     ShowWorkingDirectoryWidget,
@@ -337,7 +335,7 @@ sidebar_toggle_widget!(
     "Display the unique working directories opened by the session's tabs.",
     session_sidebar_show_working_directory,
     SessionSidebarShowWorkingDirectory,
-    SidebarPageAction::ToggleWorkingDirectory
+    SidebarPageToggle::WorkingDirectory
 );
 sidebar_toggle_widget!(
     ShowGitBranchWidget,
@@ -346,7 +344,7 @@ sidebar_toggle_widget!(
     "Display the git branch of the session's last active tab.",
     session_sidebar_show_git_branch,
     SessionSidebarShowGitBranch,
-    SidebarPageAction::ToggleGitBranch
+    SidebarPageToggle::GitBranch
 );
 sidebar_toggle_widget!(
     CompactPathsWidget,
@@ -355,5 +353,5 @@ sidebar_toggle_widget!(
     "Show only the trailing directory name instead of the full abbreviated path.",
     session_sidebar_compact_paths,
     SessionSidebarCompactPaths,
-    SidebarPageAction::ToggleCompactPaths
+    SidebarPageToggle::CompactPaths
 );
