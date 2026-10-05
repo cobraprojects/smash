@@ -410,6 +410,7 @@ fn custom_endpoint_usage_display_label_resolves_alias_name_and_generic_fallback(
     };
     let preferences = LLMPreferences {
         models_by_feature: ModelsByFeature::default(),
+        smash_model_refresh: None,
         agent_mode_models_unavailable: false,
         last_update: None,
         base_llm_for_terminal_view: HashMap::new(),
@@ -553,6 +554,7 @@ fn is_cloud_runnable_oz_model_id_classifies_ids() {
     };
     let preferences = LLMPreferences {
         models_by_feature: ModelsByFeature::default(),
+        smash_model_refresh: None,
         agent_mode_models_unavailable: false,
         last_update: None,
         base_llm_for_terminal_view: HashMap::new(),
@@ -740,6 +742,7 @@ fn with_model_picker_query_test_context(f: impl FnOnce(&LLMPreferences, &AppCont
                     agent_mode,
                     ..Default::default()
                 },
+                smash_model_refresh: None,
                 agent_mode_models_unavailable: false,
                 last_update: None,
                 base_llm_for_terminal_view: HashMap::new(),
@@ -1071,6 +1074,7 @@ fn preferences_for_profile_model_tests() -> LLMPreferences {
             agent_mode,
             ..Default::default()
         },
+        smash_model_refresh: None,
         agent_mode_models_unavailable: false,
         last_update: None,
         base_llm_for_terminal_view: HashMap::new(),

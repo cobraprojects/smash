@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock, OnceLock};
+use std::time::Duration;
 
 use ai::api_keys::{ApiKeyManager, ApiKeyManagerEvent, CustomEndpoint, CustomEndpointModel};
 pub use ai::{LLMId, LLMProvider};
@@ -13,6 +14,7 @@ use warp_core::ui::Icon;
 use warp_core::user_preferences::GetUserPreferences;
 use warp_errors::report_error;
 use warp_multi_agent_api as api;
+use warpui::r#async::{SpawnedFutureHandle, Timer};
 use warpui::{AppContext, Entity, EntityId, ModelContext, SingletonEntity};
 
 use super::custom_model_routers::{self, CustomModelRouter, ModelConfigError};
@@ -774,13 +776,11 @@ fn smash_chatgpt_model_info(model: smash_chatgpt::ChatGPTModel) -> LLMInfo {
 }
 
 fn smash_models_by_feature() -> ModelsByFeature {
-    let choices = vec![smash_model_info(
-        "gpt-5.6-sol",
-        "GPT-5.6 Sol",
-        LLMProvider::OpenAI,
-    )];
+    let mut placeholder = smash_model_info("chatgpt", "ChatGPT", LLMProvider::OpenAI);
+    placeholder.disable_reason = Some(DisableReason::Unavailable);
+    let choices = vec![placeholder];
     let available = AvailableLLMs {
-        default_id: "gpt-5.6-sol".to_owned().into(),
+        default_id: "chatgpt".to_owned().into(),
         choices,
         preferred_codex_model_id: None,
     };
@@ -807,6 +807,7 @@ struct AvailableLLMsUpdate {
 /// use as well as the user's preferred LLM for Agent Mode.
 pub struct LLMPreferences {
     models_by_feature: ModelsByFeature,
+    smash_model_refresh: Option<SpawnedFutureHandle>,
     /// Whether the most recent authed agent-mode model-list fetch failed.
     agent_mode_models_unavailable: bool,
     last_update: Option<AvailableLLMsUpdate>,
@@ -889,7 +890,8 @@ impl LLMPreferences {
 
         let mut me = Self {
             models_by_feature,
-            agent_mode_models_unavailable: false,
+            smash_model_refresh: None,
+            agent_mode_models_unavailable: ChannelState::channel() == Channel::Oss,
             last_update: None,
             base_llm_for_terminal_view,
             custom_llms,
@@ -916,7 +918,10 @@ impl LLMPreferences {
         me
     }
 
-    pub(crate) fn refresh_smash_local_models(&self, ctx: &mut ModelContext<Self>) {
+    pub(crate) fn refresh_smash_local_models(&mut self, ctx: &mut ModelContext<Self>) {
+        if let Some(refresh) = self.smash_model_refresh.take() {
+            refresh.abort();
+        }
         let ollama_base_url =
             normalize_smash_provider_url(AISettings::as_ref(ctx).smash_ollama_url.value())
                 .unwrap_or_else(|_| DEFAULT_SMASH_OLLAMA_URL.to_owned());
@@ -926,68 +931,81 @@ impl LLMPreferences {
         set_smash_provider_urls(ollama_base_url.clone(), lm_studio_base_url.clone());
         let ollama_models_url = format!("{ollama_base_url}/api/tags");
         let lm_studio_models_url = format!("{lm_studio_base_url}/v1/models");
-        ctx.spawn(
+        self.smash_model_refresh = Some(ctx.spawn(
             async move {
-                let client = reqwest::Client::new();
+                let client = reqwest::Client::builder();
                 #[cfg(not(target_family = "wasm"))]
-                let chatgpt = if smash_chatgpt::is_connected() {
-                    Some(smash_chatgpt::fetch_models().await)
-                } else {
-                    None
+                let client = client.timeout(Duration::from_secs(10));
+                let client = client.build().expect("model discovery client should build");
+                let chatgpt = async {
+                    #[cfg(not(target_family = "wasm"))]
+                    {
+                        if smash_chatgpt::is_connected() {
+                            Some(smash_chatgpt::fetch_models().await)
+                        } else {
+                            None
+                        }
+                    }
+                    #[cfg(target_family = "wasm")]
+                    {
+                        None::<anyhow::Result<Vec<()>>>
+                    }
                 };
-                #[cfg(target_family = "wasm")]
-                let chatgpt: Option<anyhow::Result<Vec<()>>> = None;
-                let ollama = client
-                    .get(ollama_models_url)
-                    .send()
-                    .await
-                    .ok()
-                    .and_then(|response| response.error_for_status().ok());
-                let ollama: Vec<String> = match ollama {
-                    Some(response) => response
-                        .json::<serde_json::Value>()
+                let ollama = async {
+                    let ollama = client
+                        .get(ollama_models_url)
+                        .send()
                         .await
                         .ok()
-                        .and_then(|value| {
-                            value
-                                .get("models")
-                                .and_then(|models| models.as_array())
-                                .cloned()
-                        })
-                        .unwrap_or_default()
-                        .iter()
-                        .filter_map(|model| model.get("name").and_then(|name| name.as_str()))
-                        .map(str::to_owned)
-                        .collect(),
-                    None => Vec::new(),
+                        .and_then(|response| response.error_for_status().ok());
+                    match ollama {
+                        Some(response) => response
+                            .json::<serde_json::Value>()
+                            .await
+                            .ok()
+                            .and_then(|value| {
+                                value
+                                    .get("models")
+                                    .and_then(|models| models.as_array())
+                                    .cloned()
+                            })
+                            .unwrap_or_default()
+                            .iter()
+                            .filter_map(|model| model.get("name").and_then(|name| name.as_str()))
+                            .map(str::to_owned)
+                            .collect::<Vec<_>>(),
+                        None => Vec::new(),
+                    }
                 };
-                let lm_studio = client
-                    .get(lm_studio_models_url)
-                    .send()
-                    .await
-                    .ok()
-                    .and_then(|response| response.error_for_status().ok());
-                let lm_studio: Vec<String> = match lm_studio {
-                    Some(response) => response
-                        .json::<serde_json::Value>()
+                let lm_studio = async {
+                    let lm_studio = client
+                        .get(lm_studio_models_url)
+                        .send()
                         .await
                         .ok()
-                        .and_then(|value| {
-                            value.get("data").and_then(|data| data.as_array()).cloned()
-                        })
-                        .unwrap_or_default()
-                        .iter()
-                        .filter_map(|model| model.get("id").and_then(|id| id.as_str()))
-                        .map(str::to_owned)
-                        .collect(),
-                    None => Vec::new(),
+                        .and_then(|response| response.error_for_status().ok());
+                    match lm_studio {
+                        Some(response) => response
+                            .json::<serde_json::Value>()
+                            .await
+                            .ok()
+                            .and_then(|value| {
+                                value.get("data").and_then(|data| data.as_array()).cloned()
+                            })
+                            .unwrap_or_default()
+                            .iter()
+                            .filter_map(|model| model.get("id").and_then(|id| id.as_str()))
+                            .map(str::to_owned)
+                            .collect::<Vec<_>>(),
+                        None => Vec::new(),
+                    }
                 };
-                (chatgpt, ollama, lm_studio)
+                futures::join!(chatgpt, ollama, lm_studio)
             },
             |me, (chatgpt, ollama, lm_studio), ctx| {
                 #[cfg(not(target_family = "wasm"))]
                 let mut choices = match chatgpt {
-                    Some(Ok(models)) if !models.is_empty() => models
+                    Some(Ok(models)) => models
                         .into_iter()
                         .map(smash_chatgpt_model_info)
                         .collect::<Vec<_>>(),
@@ -1001,7 +1019,7 @@ impl LLMPreferences {
                             .cloned()
                             .collect()
                     }
-                    Some(Ok(_)) | None => smash_models_by_feature().agent_mode.choices,
+                    None => smash_models_by_feature().agent_mode.choices,
                 };
                 #[cfg(target_family = "wasm")]
                 let mut choices = smash_models_by_feature().agent_mode.choices;
@@ -1019,17 +1037,15 @@ impl LLMPreferences {
                         LLMProvider::Unknown,
                     )
                 }));
+                me.set_agent_mode_models_unavailable(
+                    choices.iter().all(|model| model.disable_reason.is_some()),
+                );
                 let default_id = choices
                     .iter()
-                    .find(|model| model.id.as_str() == "gpt-5.6-sol")
-                    .or_else(|| {
-                        choices
-                            .iter()
-                            .find(|model| model.provider == LLMProvider::OpenAI)
-                    })
+                    .find(|model| model.disable_reason.is_none())
                     .or_else(|| choices.first())
                     .map(|model| model.id.clone())
-                    .unwrap_or_else(|| "gpt-5.6-sol".to_owned().into());
+                    .unwrap_or_else(|| "chatgpt".to_owned().into());
                 let available = AvailableLLMs {
                     default_id,
                     choices,
@@ -1040,8 +1056,15 @@ impl LLMPreferences {
                 me.models_by_feature.cli_agent = Some(available.clone());
                 me.models_by_feature.computer_use = Some(available);
                 ctx.emit(LLMPreferencesEvent::UpdatedAvailableLLMs);
+                me.smash_model_refresh = Some(ctx.spawn(
+                    Timer::after(Duration::from_secs(5 * 60)),
+                    |me, _, ctx| {
+                        me.smash_model_refresh = None;
+                        me.refresh_smash_local_models(ctx);
+                    },
+                ));
             },
-        );
+        ));
     }
 
     /// Returns the `LLMInfo` for the base LLM to be used for an Agent Mode request.
@@ -1876,7 +1899,7 @@ impl LLMPreferences {
     }
 
     /// Fetches the latest set of models from the server for the currently logged in user, and updates the model.
-    pub fn refresh_authed_models(&self, ctx: &mut ModelContext<Self>) {
+    pub fn refresh_authed_models(&mut self, ctx: &mut ModelContext<Self>) {
         if ChannelState::channel() == Channel::Oss {
             self.refresh_smash_local_models(ctx);
             return;
@@ -1928,7 +1951,7 @@ impl LLMPreferences {
         );
     }
 
-    pub fn refresh_available_models(&self, ctx: &mut ModelContext<Self>) {
+    pub fn refresh_available_models(&mut self, ctx: &mut ModelContext<Self>) {
         if ChannelState::channel() == Channel::Oss {
             self.refresh_smash_local_models(ctx);
             return;

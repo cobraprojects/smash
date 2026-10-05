@@ -12,6 +12,8 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const AUTHORIZE_ENDPOINT: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_ENDPOINT: &str = "https://auth.openai.com/oauth/token";
 const MODELS_ENDPOINT: &str = "https://chatgpt.com/backend-api/codex/models";
+// Use the Codex catalog updater's version to request all models without a Smash version filter.
+const MODEL_CATALOG_CLIENT_VERSION: &str = "99.99.99";
 const RESPONSES_ENDPOINT: &str = "https://chatgpt.com/backend-api/codex/responses";
 const KEYCHAIN_SERVICE: &str = "app.smash.Smash.chatgpt";
 const KEYCHAIN_ACCOUNT: &str = "oauth";
@@ -50,6 +52,7 @@ struct ModelsResponse {
 #[derive(Debug, Deserialize)]
 struct ModelResponseEntry {
     slug: String,
+    #[serde(default)]
     display_name: String,
     #[serde(default)]
     description: Option<String>,
@@ -190,15 +193,14 @@ pub(crate) async fn fetch_models() -> anyhow::Result<Vec<ChatGPTModel>> {
     let mut auth = current_auth().await?;
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(30))
         .build()
         .context("failed to create the Smash ChatGPT client")?;
 
     for attempt in 0..2 {
         let response = client
             .get(MODELS_ENDPOINT)
-            // Smash is not a Codex client. Sending Smash's app version here would make the
-            // backend hide models that require a newer Codex version.
-            .query(&[("client_version", "")])
+            .query(&[("client_version", MODEL_CATALOG_CLIENT_VERSION)])
             .bearer_auth(&auth.access)
             .header(
                 "ChatGPT-Account-Id",
@@ -234,7 +236,7 @@ fn parse_model_catalog(json: &str) -> anyhow::Result<Vec<ChatGPTModel>> {
         .context("ChatGPT returned a malformed model catalog")?
         .models;
     models.sort_by_key(|model| model.priority);
-    Ok(models
+    let models: Vec<_> = models
         .into_iter()
         .filter(|model| {
             !model.slug.is_empty()
@@ -255,7 +257,11 @@ fn parse_model_catalog(json: &str) -> anyhow::Result<Vec<ChatGPTModel>> {
                 description: model.description,
             }
         })
-        .collect())
+        .collect();
+    if models.is_empty() {
+        return Err(anyhow!("ChatGPT returned no available models"));
+    }
+    Ok(models)
 }
 
 pub(crate) async fn send_responses(body: &Value) -> anyhow::Result<Vec<Value>> {
@@ -530,53 +536,5 @@ fn remove_secret() -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_text_and_function_calls_from_responses_sse() {
-        let stream = concat!(
-            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n",
-            "data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"call_1\",\"name\":\"run_shell_command\",\"arguments\":\"{\\\"command\\\":\\\"pwd\\\"}\"}}\n\n",
-            "data: [DONE]\n\n",
-        );
-        let output = parse_response_stream(stream).unwrap();
-        assert_eq!(output[0]["text"], "hello");
-        assert_eq!(output[1]["id"], "call_1");
-        assert_eq!(output[1]["input"]["command"], "pwd");
-    }
-
-    #[test]
-    fn parses_picker_visible_models_in_server_priority_order() {
-        let catalog = r#"{
-            "models": [
-                {
-                    "slug": "gpt-5.6-sol",
-                    "display_name": "GPT-5.6 Sol",
-                    "description": "Everyday work",
-                    "priority": 20,
-                    "visibility": "list"
-                },
-                {
-                    "slug": "gpt-6-astra",
-                    "display_name": "GPT-6 Astra",
-                    "description": "Complex work",
-                    "priority": 10,
-                    "visibility": "list"
-                },
-                {
-                    "slug": "gpt-internal",
-                    "display_name": "Internal",
-                    "priority": 0,
-                    "visibility": "hide"
-                }
-            ]
-        }"#;
-
-        let models = parse_model_catalog(catalog).unwrap();
-        assert_eq!(models.len(), 2);
-        assert_eq!(models[0].id, "gpt-6-astra");
-        assert_eq!(models[0].display_name, "GPT-6 Astra");
-        assert_eq!(models[1].id, "gpt-5.6-sol");
-    }
-}
+#[path = "smash_chatgpt_tests.rs"]
+mod tests;
